@@ -6,7 +6,9 @@ python -c "
 import time, os, sys
 import psycopg2
 
-url = os.environ.get('DATABASE_URL', '')
+# psycopg2 no acepta 'postgresql+psycopg2://', necesita 'postgresql://'
+url = os.environ.get('DATABASE_URL', '').replace('postgresql+psycopg2://', 'postgresql://')
+
 for i in range(30):
     try:
         psycopg2.connect(url)
