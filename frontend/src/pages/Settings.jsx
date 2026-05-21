@@ -28,7 +28,8 @@ export default function Settings() {
     name: '',
     type: 'expense',
     is_personal: false,
-    allows_credit: true
+    allows_credit: true,
+    parent_id: null
   });
 
   const [creditCardForm, setCreditCardForm] = useState({
@@ -105,12 +106,13 @@ export default function Settings() {
   };
 
   // Category handlers
-  const handleAddCategory = () => {
+  const handleAddCategory = (parentId = null) => {
     setCategoryForm({
       name: '',
       type: 'expense',
       is_personal: false,
-      allows_credit: true
+      allows_credit: true,
+      parent_id: parentId
     });
     setEditingCategory(null);
     setShowCategoryForm(true);
@@ -121,7 +123,8 @@ export default function Settings() {
       name: category.name,
       type: category.type,
       is_personal: category.is_personal,
-      allows_credit: category.allows_credit
+      allows_credit: category.allows_credit,
+      parent_id: category.parent_id || null
     });
     setEditingCategory(category);
     setShowCategoryForm(true);
@@ -340,7 +343,7 @@ export default function Settings() {
         <div className="settings-section">
           <div className="section-header">
             <h2>Categorías</h2>
-            <button className="btn-primary" onClick={handleAddCategory}>
+            <button className="btn-primary" onClick={() => handleAddCategory(null)}>
               <Plus size={16} />
               Agregar categoría
             </button>
@@ -348,7 +351,9 @@ export default function Settings() {
 
           {showCategoryForm && (
             <div className="form-card">
-              <h3>{editingCategory ? 'Editar categoría' : 'Nueva categoría'}</h3>
+              <h3>
+                {editingCategory ? 'Editar categoría' : categoryForm.parent_id ? 'Nueva subcategoría' : 'Nueva categoría'}
+              </h3>
               <div className="form-group">
                 <label>Nombre *</label>
                 <input
@@ -357,6 +362,21 @@ export default function Settings() {
                   onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
                   placeholder="Ingresa el nombre de la categoría"
                 />
+              </div>
+              <div className="form-group">
+                <label>Categoría padre (opcional)</label>
+                <select
+                  value={categoryForm.parent_id || ''}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, parent_id: e.target.value || null })}
+                >
+                  <option value="">Sin padre (categoría raíz)</option>
+                  {categories
+                    .filter(c => !c.parent_id && (!editingCategory || c.id !== editingCategory.id))
+                    .map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))
+                  }
+                </select>
               </div>
               <div className="form-group">
                 <label>Tipo *</label>
@@ -408,35 +428,102 @@ export default function Settings() {
           )}
 
           <div className="settings-list">
-            {categories.map((category) => (
-              <div key={category.id} className="settings-item">
+            {/* Categorías raíz y sus subcategorías agrupadas */}
+            {categories
+              .filter(c => !c.parent_id)
+              .map(parent => {
+                const subcategories = categories.filter(c => c.parent_id === parent.id);
+                return (
+                  <React.Fragment key={parent.id}>
+                    {/* Categoría padre */}
+                    <div className="settings-item category-parent">
+                      <div className="item-info">
+                        <h3>{parent.name}</h3>
+                        <div className="category-badges">
+                          <span className={`badge ${parent.type === 'income' ? 'badge-success' : 'badge-danger'}`}>
+                            {parent.type === 'income' ? 'Ingreso' : 'Gasto'}
+                          </span>
+                          {parent.is_personal && <span className="badge badge-warning">Personal</span>}
+                          {parent.allows_credit && <span className="badge badge-info">Crédito OK</span>}
+                        </div>
+                      </div>
+                      <div className="item-actions">
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleAddCategory(parent.id)}
+                          title="Agregar subcategoría"
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleEditCategory(parent)}
+                          title="Editar"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          className="btn-icon btn-danger"
+                          onClick={() => handleDeleteCategory(parent.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    {/* Subcategorías */}
+                    {subcategories.map(sub => (
+                      <div key={sub.id} className="settings-item category-child">
+                        <div className="item-info">
+                          <h3>↳ {sub.name}</h3>
+                          <div className="category-badges">
+                            <span className={`badge ${sub.type === 'income' ? 'badge-success' : 'badge-danger'}`}>
+                              {sub.type === 'income' ? 'Ingreso' : 'Gasto'}
+                            </span>
+                            {sub.is_personal && <span className="badge badge-warning">Personal</span>}
+                            {sub.allows_credit && <span className="badge badge-info">Crédito OK</span>}
+                          </div>
+                        </div>
+                        <div className="item-actions">
+                          <button
+                            className="btn-icon"
+                            onClick={() => handleEditCategory(sub)}
+                            title="Editar"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            className="btn-icon btn-danger"
+                            onClick={() => handleDeleteCategory(sub.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })
+            }
+            {/* Categorías sin padre que no son raíz (edge case) */}
+            {categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)).map(orphan => (
+              <div key={orphan.id} className="settings-item">
                 <div className="item-info">
-                  <h3>{category.name}</h3>
+                  <h3>{orphan.name}</h3>
                   <div className="category-badges">
-                    <span className={`badge ${category.type === 'income' ? 'badge-success' : 'badge-danger'}`}>
-                      {category.type}
+                    <span className={`badge ${orphan.type === 'income' ? 'badge-success' : 'badge-danger'}`}>
+                      {orphan.type === 'income' ? 'Ingreso' : 'Gasto'}
                     </span>
-                    {category.is_personal && (
-                      <span className="badge badge-warning">Personal</span>
-                    )}
-                    {category.allows_credit && (
-                      <span className="badge badge-info">Crédito OK</span>
-                    )}
+                    {orphan.is_personal && <span className="badge badge-warning">Personal</span>}
+                    {orphan.allows_credit && <span className="badge badge-info">Crédito OK</span>}
                   </div>
                 </div>
                 <div className="item-actions">
-                  <button
-                    className="btn-icon"
-                    onClick={() => handleEditCategory(category)}
-                    title="Editar"
-                  >
+                  <button className="btn-icon" onClick={() => handleEditCategory(orphan)} title="Editar">
                     <Edit2 size={16} />
                   </button>
-                  <button
-                    className="btn-icon btn-danger"
-                    onClick={() => handleDeleteCategory(category.id)}
-                    title="Eliminar"
-                  >
+                  <button className="btn-icon btn-danger" onClick={() => handleDeleteCategory(orphan.id)} title="Eliminar">
                     <Trash2 size={16} />
                   </button>
                 </div>

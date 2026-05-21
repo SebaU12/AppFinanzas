@@ -239,6 +239,23 @@
   color: var(--primary-dark);
 }
 
+/* Jerarquía de categorías */
+.category-parent {
+  border-left: 4px solid var(--primary);
+}
+
+.category-child {
+  margin-left: 1.5rem;
+  border-left: 4px solid var(--primary-light);
+  background: var(--surface-alt, #f9f9f9);
+}
+
+.category-child .item-info h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 /* Item Actions */
 .item-actions {
   display: flex;
