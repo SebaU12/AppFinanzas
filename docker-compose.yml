@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16
+    container_name: finanzas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finanzas
+      POSTGRES_USER: finanzas_user
+      POSTGRES_PASSWORD: finanzas_pass_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - finanzas-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finanzas-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://finanzas_user:finanzas_pass_123@db:5432/finanzas
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    networks:
+      - finanzas-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: finanzas-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - finanzas-network
+
+networks:
+  finanzas-network:
+    driver: bridge

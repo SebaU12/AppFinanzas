@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.env
+.venv/
+venv/
+ENV/
+
+# SQLite
+*.sqlite3
+*.db
+
+# Node
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+data/postgres/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Sensitive / personal files
+credentials.txt
+chat.txt

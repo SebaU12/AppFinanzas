@@ -1,0 +1,354 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Colors */
+  --primary: #569B85;
+  --primary-light: #A7CDC1;
+  --primary-dark: #3E7161;
+  --secondary: #FFC145;
+  --secondary-light: #FFE3A3;
+  --accent: #E78484;
+  --background: #D9F2ED;
+  --surface: #FFFFFF;
+  --surface-alt: #F4F9F8;
+  --text-primary: #1A1C1E;
+  --text-secondary: #717171;
+  --text-light: #BDBDBD;
+  --success: #569B85;
+  --warning: #FFC145;
+  --error: #E78484;
+
+  /* Layout */
+  --sidebar-width: 100px;
+  --sidebar-width-expanded: 260px;
+  --header-height: 5rem;
+  --grid-gap: 1.5rem;
+  --border-radius: 1.5rem;
+  --card-radius: 2rem;
+  --shadow: 0 10px 30px rgba(86, 155, 133, 0.08);
+  --container-max-width: 1400px;
+
+  /* Typography */
+  --font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 1rem;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1 {
+  font-size: clamp(1.8rem, 2.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: clamp(1.2rem, 1.5vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.text-small {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Card Component */
+.card {
+  background: var(--surface);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(86, 155, 133, 0.12);
+}
+
+/* Button Component */
+.btn {
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: scale(0.98);
+  background: var(--primary-dark);
+}
+
+.btn-icon {
+  background: var(--surface-alt);
+  color: var(--primary);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0;
+}
+
+.btn-icon:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Status Pill */
+.status-pill {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.status-pill.success {
+  background: rgba(86, 155, 133, 0.1);
+  color: var(--success);
+}
+
+.status-pill.warning {
+  background: rgba(255, 193, 69, 0.1);
+  color: var(--warning);
+}
+
+.status-pill.error {
+  background: rgba(231, 132, 132, 0.1);
+  color: var(--error);
+}
+
+/* Page Layout */
+.page {
+  padding: 2rem;
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 1rem;
+    margin-bottom: 5rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Text Utilities */
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-light {
+  color: var(--text-light);
+}
+
+/* Badge */
+.badge {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+/* Input Component */
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid #e0e0e0;
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+  background: var(--surface);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Button Variants */
+.btn-secondary {
+  background: var(--secondary);
+  color: white;
+}
+
+.btn-secondary:hover {
+  transform: scale(0.98);
+  background: #e6a830;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 1rem;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+}
+
+.btn-icon {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: var(--surface-alt);
+  color: var(--primary);
+}
+
+/* Utility Classes */
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.grid {
+  display: grid;
+  gap: var(--grid-gap);
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gap-1 {
+  gap: 0.5rem;
+}
+
+.gap-2 {
+  gap: 1rem;
+}
+
+.gap-3 {
+  gap: 1.5rem;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
