@@ -26,7 +26,7 @@ export default function Settings() {
 
   const [categoryForm, setCategoryForm] = useState({
     name: '',
-    category_type: 'expense',
+    type: 'expense',
     is_personal: false,
     allows_credit: true
   });
@@ -108,7 +108,7 @@ export default function Settings() {
   const handleAddCategory = () => {
     setCategoryForm({
       name: '',
-      category_type: 'expense',
+      type: 'expense',
       is_personal: false,
       allows_credit: true
     });
@@ -119,7 +119,7 @@ export default function Settings() {
   const handleEditCategory = (category) => {
     setCategoryForm({
       name: category.name,
-      category_type: category.category_type,
+      type: category.type,
       is_personal: category.is_personal,
       allows_credit: category.allows_credit
     });
@@ -361,8 +361,8 @@ export default function Settings() {
               <div className="form-group">
                 <label>Tipo *</label>
                 <select
-                  value={categoryForm.category_type}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, category_type: e.target.value })}
+                  value={categoryForm.type}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, type: e.target.value })}
                 >
                   <option value="income">Ingreso</option>
                   <option value="expense">Gasto</option>
@@ -413,8 +413,8 @@ export default function Settings() {
                 <div className="item-info">
                   <h3>{category.name}</h3>
                   <div className="category-badges">
-                    <span className={`badge ${category.category_type === 'income' ? 'badge-success' : 'badge-danger'}`}>
-                      {category.category_type}
+                    <span className={`badge ${category.type === 'income' ? 'badge-success' : 'badge-danger'}`}>
+                      {category.type}
                     </span>
                     {category.is_personal && (
                       <span className="badge badge-warning">Personal</span>
