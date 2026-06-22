@@ -19,7 +19,8 @@ export default function CreditCards() {
     participant_id: '',
     closing_day: 15,
     payment_day: 5,
-    credit_limit: 5000
+    credit_limit: 5000,
+    currency: 'PEN'
   });
 
   useEffect(() => {
@@ -181,7 +182,8 @@ export default function CreditCards() {
       participant_id: participants[0]?.id || '',
       closing_day: 15,
       payment_day: 5,
-      credit_limit: 5000
+      credit_limit: 5000,
+      currency: 'PEN'
     });
     setEditingCard(null);
     setShowModal(true);
@@ -193,7 +195,8 @@ export default function CreditCards() {
       participant_id: card.participant_id || participants[0]?.id || '',
       closing_day: card.closingDay,
       payment_day: card.paymentDay,
-      credit_limit: card.creditLimit || 5000
+      credit_limit: card.creditLimit || 5000,
+      currency: card.currency || 'PEN'
     });
     setEditingCard(card);
     setShowModal(true);
@@ -649,6 +652,26 @@ export default function CreditCards() {
                       {p.name}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Moneda *
+                </label>
+                <select
+                  value={cardForm.currency}
+                  onChange={(e) => setCardForm({ ...cardForm, currency: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem'
+                  }}
+                >
+                  <option value="PEN">PEN — Soles</option>
+                  <option value="USD">USD — Dólares</option>
                 </select>
               </div>
 

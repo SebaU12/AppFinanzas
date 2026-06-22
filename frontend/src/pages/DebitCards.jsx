@@ -17,7 +17,8 @@ export default function DebitCards() {
     participant_id: '',
     initial_balance: 0,
     last_four_digits: '',
-    active: true
+    active: true,
+    currency: 'PEN'
   });
 
   useEffect(() => {
@@ -99,7 +100,8 @@ export default function DebitCards() {
       participant_id: participants[0]?.id || '',
       initial_balance: 0,
       last_four_digits: '',
-      active: true
+      active: true,
+      currency: 'PEN'
     });
     setEditingCard(null);
     setShowModal(true);
@@ -111,7 +113,8 @@ export default function DebitCards() {
       participant_id: card.participant_id,
       initial_balance: card.initial_balance,
       last_four_digits: card.last_four_digits || '',
-      active: card.active
+      active: card.active,
+      currency: card.currency || 'PEN'
     });
     setEditingCard(card);
     setShowModal(true);
@@ -123,7 +126,8 @@ export default function DebitCards() {
         name: cardForm.name,
         participant_id: cardForm.participant_id,
         initial_balance: parseFloat(cardForm.initial_balance) || 0,
-        active: cardForm.active
+        active: cardForm.active,
+        currency: cardForm.currency
       };
 
       // Only include last_four_digits if it's not empty
@@ -401,6 +405,20 @@ export default function DebitCards() {
                       {p.name}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Moneda *
+                </label>
+                <select
+                  value={cardForm.currency}
+                  onChange={(e) => setCardForm({ ...cardForm, currency: e.target.value })}
+                  className="input"
+                >
+                  <option value="PEN">PEN — Soles</option>
+                  <option value="USD">USD — Dólares</option>
                 </select>
               </div>
 

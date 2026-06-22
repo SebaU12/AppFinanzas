@@ -5,6 +5,7 @@ from uuid import UUID
 from decimal import Decimal
 from pydantic import BaseModel, Field
 from typing import TYPE_CHECKING
+from models.transaction import Currency
 
 if TYPE_CHECKING:
     from schemas.participant import ParticipantResponse
@@ -17,6 +18,7 @@ class DebitCardBase(BaseModel):
     initial_balance: Decimal = Field(default=0, decimal_places=2, description="Starting balance")
     last_four_digits: str | None = Field(None, min_length=4, max_length=4, description="Last 4 digits")
     active: bool = Field(default=True, description="Whether card is active")
+    currency: Currency = Field(default=Currency.PEN, description="Card currency: PEN or USD")
 
 
 class DebitCardCreate(DebitCardBase):
@@ -30,6 +32,7 @@ class DebitCardUpdate(BaseModel):
     initial_balance: Decimal | None = None
     last_four_digits: str | None = None
     active: bool | None = None
+    currency: Currency | None = None
 
 
 class DebitCardResponse(DebitCardBase):
