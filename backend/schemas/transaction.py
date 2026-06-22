@@ -5,7 +5,7 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import date as date_type
 from pydantic import BaseModel, Field, field_validator
-from models.transaction import PaymentMethod
+from models.transaction import PaymentMethod, Currency
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ class TransactionBase(BaseModel):
     debit_card_id: UUID | None = Field(None, description="Debit card ID (optional for debit transactions)")
     is_credit: bool = Field(default=False, description="Whether this is a credit transaction")
     installment_count: int | None = Field(None, ge=1, le=36, description="Number of installments (1-36)")
+    currency: Currency = Field(default=Currency.PEN, description="Transaction currency: PEN or USD")
     description: str | None = Field(None, max_length=500, description="Transaction description")
 
     @field_validator('amount')

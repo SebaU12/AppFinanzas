@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from models.transaction import Transaction, PaymentMethod
+from models.credit_card import CreditCard
 from models.category import Category, CategoryType
 from models.participant import Participant
 from models.card_installment import CardInstallment
@@ -57,12 +58,21 @@ class TransactionService:
             installment_count = transaction.installment_count or 1
             amount_per_installment = float(transaction.amount) / installment_count
 
-            # Start from the transaction date
-            current_month = transaction.date
+            # Determine first installment month based on card closing day:
+            # - Purchase before closing_day → charged next month (closing cycle not yet closed)
+            # - Purchase on/after closing_day → charged two months out (cycle already closed)
+            card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
+            closing_day = card.closing_day if card else 1
+            if transaction.date.day < closing_day:
+                first_installment = transaction.date + relativedelta(months=1)
+            else:
+                first_installment = transaction.date + relativedelta(months=2)
+            # Normalize to first day for month string calculation
+            first_installment = first_installment.replace(day=1)
 
             for i in range(installment_count):
                 # Calculate the month for this installment
-                installment_month = current_month + relativedelta(months=i)
+                installment_month = first_installment + relativedelta(months=i)
                 month_str = installment_month.strftime("%Y-%m")
 
                 installment = CardInstallment(

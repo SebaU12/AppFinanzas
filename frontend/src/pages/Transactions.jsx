@@ -27,6 +27,7 @@ export default function Transactions() {
   const [transactionForm, setTransactionForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: '',
+    currency: 'PEN',
     category_id: '',
     participant_id: '',
     payment_method: 'cash',
@@ -73,11 +74,16 @@ export default function Transactions() {
         date: t.date,
         description: t.description,
         category: t.category?.name || 'Desconocido',
-        subcategory: t.subcategory || null,
+        category_id: t.category_id,
         type: t.category?.type || t.type,
         amount: parseFloat(t.amount),
         participant: t.participant?.name || 'Desconocido',
-        paymentMethod: t.payment_method
+        participant_id: t.participant_id,
+        payment_method: t.payment_method,
+        currency: t.currency || 'PEN',
+        card_id: t.card_id || '',
+        debit_card_id: t.debit_card_id || '',
+        installment_count: t.installment_count || 1
       }));
 
       setTransactions(mappedData);
@@ -95,10 +101,12 @@ export default function Transactions() {
     setTransactionForm({
       date: new Date().toISOString().split('T')[0],
       amount: '',
+      currency: 'PEN',
       category_id: '',
       participant_id: participants[0]?.id || '',
       payment_method: 'cash',
       card_id: '',
+      debit_card_id: '',
       installments: 1,
       description: ''
     });
@@ -108,11 +116,37 @@ export default function Transactions() {
     setShowModal(true);
   };
 
+  const handleEditTransaction = (transaction) => {
+    const category = categories.find(c => c.id === transaction.category_id);
+    const parentCategory = category?.parent_id
+      ? categories.find(c => c.id === category.parent_id)
+      : category;
+
+    setTransactionForm({
+      date: transaction.date,
+      amount: transaction.amount,
+      currency: transaction.currency || 'PEN',
+      category_id: transaction.category_id || '',
+      participant_id: transaction.participant_id || '',
+      payment_method: transaction.payment_method || 'cash',
+      card_id: transaction.card_id || '',
+      debit_card_id: transaction.debit_card_id || '',
+      installments: transaction.installment_count || 1,
+      description: transaction.description || ''
+    });
+
+    setSelectedParentCategory(parentCategory || null);
+    setCategoryStep(parentCategory ? 2 : 1);
+    setEditingTransaction(transaction);
+    setShowModal(true);
+  };
+
   const handleSaveTransaction = async () => {
     try {
       const payload = {
         date: transactionForm.date,
         amount: parseFloat(transactionForm.amount),
+        currency: transactionForm.currency,
         category_id: transactionForm.category_id,
         participant_id: transactionForm.participant_id,
         payment_method: transactionForm.payment_method,
@@ -229,15 +263,15 @@ export default function Transactions() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <div className="card" style={{ background: 'var(--primary)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Ingresos totales</p>
-          <h2 style={{ margin: 0 }}>${totalIncome.toLocaleString()}</h2>
+          <h2 style={{ margin: 0 }}>S/ {totalIncome.toLocaleString()}</h2>
         </div>
         <div className="card" style={{ background: 'var(--accent)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Gastos totales</p>
-          <h2 style={{ margin: 0 }}>${totalExpenses.toLocaleString()}</h2>
+          <h2 style={{ margin: 0 }}>S/ {totalExpenses.toLocaleString()}</h2>
         </div>
         <div className="card" style={{ background: 'var(--secondary)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Neto</p>
-          <h2 style={{ margin: 0 }}>${(totalIncome - totalExpenses).toLocaleString()}</h2>
+          <h2 style={{ margin: 0 }}>S/ {(totalIncome - totalExpenses).toLocaleString()}</h2>
         </div>
       </div>
 
@@ -367,13 +401,22 @@ export default function Transactions() {
                     fontWeight: 600,
                     color: transaction.type === 'income' ? 'var(--primary)' : 'var(--accent)'
                   }}>
-                    {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toLocaleString()}
+                    {transaction.type === 'income' ? '+' : '-'}{transaction.currency === 'USD' ? '$' : 'S/'} {transaction.amount.toLocaleString()}
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button className="btn-icon" title="Editar">
+                    <button
+                      className="btn-icon"
+                      title="Editar"
+                      onClick={() => handleEditTransaction(transaction)}
+                    >
                       <Edit size={18} />
                     </button>
-                    <button className="btn-icon" title="Eliminar" style={{ marginLeft: '0.5rem' }}>
+                    <button
+                      className="btn-icon"
+                      title="Eliminar"
+                      style={{ marginLeft: '0.5rem' }}
+                      onClick={() => handleDeleteTransaction(transaction)}
+                    >
                       <Trash2 size={18} />
                     </button>
                   </td>
@@ -428,7 +471,7 @@ export default function Transactions() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                     Fecha *
@@ -466,6 +509,26 @@ export default function Transactions() {
                     }}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Moneda *
+                  </label>
+                  <select
+                    value={transactionForm.currency}
+                    onChange={(e) => setTransactionForm({ ...transactionForm, currency: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    <option value="PEN">S/ Soles (PEN)</option>
+                    <option value="USD">$ Dólares (USD)</option>
+                  </select>
+                </div>
               </div>
 
               {/* Category Selection - Step 1: Parent Category */}
@@ -482,8 +545,15 @@ export default function Transactions() {
                           key={parentCat.id}
                           type="button"
                           onClick={() => {
+                            const hasSubs = categories.some(c => c.parent_id === parentCat.id);
                             setSelectedParentCategory(parentCat);
-                            setCategoryStep(2);
+                            if (hasSubs) {
+                              setCategoryStep(2);
+                            } else {
+                              // Sin subcategorías: usar la categoría padre directamente
+                              setTransactionForm({ ...transactionForm, category_id: parentCat.id });
+                              setCategoryStep(2);
+                            }
                           }}
                           style={{
                             padding: '1rem',
@@ -540,26 +610,49 @@ export default function Transactions() {
                   >
                     ← Volver a categorías
                   </button>
-                  <select
-                    value={transactionForm.category_id}
-                    onChange={(e) => setTransactionForm({ ...transactionForm, category_id: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #ddd',
-                      borderRadius: '0.5rem',
-                      fontSize: '1rem'
-                    }}
-                  >
-                    <option value="">Seleccionar subcategoría</option>
-                    {categories
-                      .filter(cat => cat.parent_id === selectedParentCategory.id)
-                      .map((subcat) => (
-                        <option key={subcat.id} value={subcat.id}>
-                          {subcat.name}
+                  {(() => {
+                    const subcats = categories.filter(c => c.parent_id === selectedParentCategory.id);
+                    if (subcats.length === 0) {
+                      return (
+                        <div style={{
+                          padding: '0.75rem 1rem',
+                          border: '2px solid var(--primary)',
+                          borderRadius: '0.5rem',
+                          background: 'rgba(86,155,133,0.08)',
+                          fontWeight: 600,
+                          color: 'var(--primary)'
+                        }}>
+                          ✓ {selectedParentCategory.name}
+                          <div style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                            Esta categoría no tiene subcategorías
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <select
+                        value={transactionForm.category_id}
+                        onChange={(e) => setTransactionForm({ ...transactionForm, category_id: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #ddd',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem'
+                        }}
+                      >
+                        <option value="">Seleccionar subcategoría</option>
+                        <option value={selectedParentCategory.id}>
+                          {selectedParentCategory.name} (sin especificar)
                         </option>
-                      ))}
-                  </select>
+                        {subcats.map((subcat) => (
+                          <option key={subcat.id} value={subcat.id}>
+                            {subcat.name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
                 </div>
               )}
 

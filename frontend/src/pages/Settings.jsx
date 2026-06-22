@@ -36,7 +36,8 @@ export default function Settings() {
     name: '',
     participant_id: '',
     closing_day: 15,
-    payment_day: 5
+    payment_day: 5,
+    currency: 'PEN'
   });
 
   useEffect(() => {
@@ -158,17 +159,15 @@ export default function Settings() {
 
   // Credit Card handlers
   const handleAddCreditCard = () => {
-    alert('¡Botón presionado! Participantes: ' + participants.length);
-    console.log('Add Credit Card clicked', { participants, showCreditCardForm });
     setCreditCardForm({
       name: '',
       participant_id: participants[0]?.id || '',
       closing_day: 15,
-      payment_day: 5
+      payment_day: 5,
+      currency: 'PEN'
     });
     setEditingCreditCard(null);
     setShowCreditCardForm(true);
-    console.log('Form state set to true');
   };
 
   const handleEditCreditCard = (card) => {
@@ -176,7 +175,8 @@ export default function Settings() {
       name: card.name,
       participant_id: card.participant_id,
       closing_day: card.closing_day,
-      payment_day: card.payment_day
+      payment_day: card.payment_day,
+      currency: card.currency || 'PEN'
     });
     setEditingCreditCard(card);
     setShowCreditCardForm(true);
@@ -537,19 +537,9 @@ export default function Settings() {
         <div className="settings-section">
           <div className="section-header">
             <h2>Tarjetas de crédito</h2>
-            <button
-              className="btn-primary"
-              onClick={() => {
-                alert('EL CLICK DIRECTO FUNCIONA');
-                handleAddCreditCard();
-              }}
-              style={{ position: 'relative', zIndex: 1000 }}
-            >
+            <button className="btn-primary" onClick={handleAddCreditCard}>
               <Plus size={16} />
               Agregar tarjeta de crédito
-            </button>
-            <button onClick={() => alert('BOTÓN DE PRUEBA')} style={{ marginLeft: '10px' }}>
-              Prueba
             </button>
           </div>
 
@@ -609,6 +599,16 @@ export default function Settings() {
                   <small>Día del mes (1-31)</small>
                 </div>
               </div>
+              <div className="form-group">
+                <label>Moneda *</label>
+                <select
+                  value={creditCardForm.currency}
+                  onChange={(e) => setCreditCardForm({ ...creditCardForm, currency: e.target.value })}
+                >
+                  <option value="PEN">S/ Soles (PEN)</option>
+                  <option value="USD">$ Dólares (USD)</option>
+                </select>
+              </div>
               <div className="form-actions">
                 <button className="btn-primary" onClick={handleSaveCreditCard}>
                   <Save size={16} />
@@ -641,7 +641,8 @@ export default function Settings() {
                     <p>
                       Titular: {participants.find(p => p.id === card.participant_id)?.name || 'Desconocido'} •
                       Cierre: día {card.closing_day} •
-                      Pago: día {card.payment_day}
+                      Pago: día {card.payment_day} •
+                      {card.currency === 'USD' ? '$ USD' : 'S/ PEN'}
                     </p>
                   </div>
                   <div className="item-actions">

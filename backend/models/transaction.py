@@ -16,6 +16,12 @@ class PaymentMethod(str, enum.Enum):
     CREDIT = "credit"
 
 
+class Currency(str, enum.Enum):
+    """Currency enumeration"""
+    PEN = "PEN"  # Soles peruanos
+    USD = "USD"  # Dólares estadounidenses
+
+
 class Transaction(Base):
     __tablename__ = "transactions"
 
@@ -29,6 +35,7 @@ class Transaction(Base):
     debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=True)  # Debit card reference
     is_credit = Column(Boolean, default=False, nullable=False)
     installment_count = Column(Integer, nullable=True)  # Number of installments
+    currency = Column(SQLEnum(Currency), nullable=False, server_default="PEN")
     description = Column(String, nullable=True)
 
     # Relationships
