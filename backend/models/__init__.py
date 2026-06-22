@@ -13,10 +13,11 @@ from .account_receivable import AccountReceivable
 from .monthly_reimbursement import MonthlyReimbursement
 from .reimbursement_detail import ReimbursementDetail
 from .expected_purchase import ExpectedPurchase
+from .exchange_rate import ExchangeRate
 
 __all__ = [
     "Participant", "Category", "CategoryType", "MonthlyBudget",
     "Transaction", "PaymentMethod", "CreditCard", "DebitCard", "CardInstallment",
     "AccountPayable", "AccountReceivable", "MonthlyReimbursement",
-    "ReimbursementDetail", "ExpectedPurchase"
+    "ReimbursementDetail", "ExpectedPurchase", "ExchangeRate"
 ]

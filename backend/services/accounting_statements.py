@@ -15,6 +15,7 @@ from models.card_installment import CardInstallment
 from models.account_payable import AccountPayable
 from models.account_receivable import AccountReceivable
 from models.participant import Participant
+from services.exchange_rate import ExchangeRateService
 
 
 class AccountingStatementsService:
@@ -49,7 +50,10 @@ class AccountingStatementsService:
         expenses_by_category = {}
 
         for transaction, category in transactions:
-            amount = Decimal(str(transaction.amount))
+            month = transaction.date.strftime('%Y-%m')
+            amount = ExchangeRateService.convert_to_pen(
+                db, Decimal(str(transaction.amount)), transaction.currency, month
+            )
 
             if category.type == CategoryType.INCOME:
                 if category.name not in income_by_category:
@@ -123,7 +127,10 @@ class AccountingStatementsService:
         cash_outflows = Decimal('0')
 
         for transaction, category in cash_transactions:
-            amount = Decimal(str(transaction.amount))
+            month = transaction.date.strftime('%Y-%m')
+            amount = ExchangeRateService.convert_to_pen(
+                db, Decimal(str(transaction.amount)), transaction.currency, month
+            )
             if category.type == CategoryType.INCOME:
                 cash_inflows += amount
             else:
@@ -195,10 +202,13 @@ class AccountingStatementsService:
             Transaction.date <= as_of
         ).all()
 
-        # Calculate cumulative cash (income - expenses for cash/debit)
+        # Calculate cumulative cash (income - expenses for cash/debit), all in PEN
         cash_balance = Decimal('0')
         for transaction, category in all_transactions:
-            amount = Decimal(str(transaction.amount))
+            t_month = transaction.date.strftime('%Y-%m')
+            amount = ExchangeRateService.convert_to_pen(
+                db, Decimal(str(transaction.amount)), transaction.currency, t_month
+            )
             if transaction.payment_method in [PaymentMethod.CASH, PaymentMethod.DEBIT]:
                 if category.type == CategoryType.INCOME:
                     cash_balance += amount
@@ -229,7 +239,10 @@ class AccountingStatementsService:
         total_expenses = Decimal('0')
 
         for transaction, category in all_transactions:
-            amount = Decimal(str(transaction.amount))
+            t_month = transaction.date.strftime('%Y-%m')
+            amount = ExchangeRateService.convert_to_pen(
+                db, Decimal(str(transaction.amount)), transaction.currency, t_month
+            )
             if category.type == CategoryType.INCOME:
                 total_income += amount
             else:
@@ -306,7 +319,10 @@ class AccountingStatementsService:
             total_expenses = Decimal('0')
 
             for transaction, category in transactions:
-                amount = Decimal(str(transaction.amount))
+                t_month = transaction.date.strftime('%Y-%m')
+                amount = ExchangeRateService.convert_to_pen(
+                    db, Decimal(str(transaction.amount)), transaction.currency, t_month
+                )
 
                 if category.name not in by_category:
                     by_category[category.name] = {

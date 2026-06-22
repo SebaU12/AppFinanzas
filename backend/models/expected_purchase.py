@@ -11,7 +11,7 @@ from sqlalchemy.sql import func
 from sqlalchemy import Enum as SQLEnum
 
 from app.database import Base
-from models.transaction import PaymentMethod
+from models.transaction import PaymentMethod, Currency
 
 
 class ExpectedPurchase(Base):
@@ -38,6 +38,7 @@ class ExpectedPurchase(Base):
     payment_method = Column(SQLEnum(PaymentMethod), nullable=False)
     card_id = Column(UUID(as_uuid=True), ForeignKey("credit_cards.id"), nullable=True)
     installment_count = Column(Integer, nullable=True)
+    currency = Column(SQLEnum(Currency), nullable=False, server_default="PEN")
 
     # Status
     converted_to_transaction = Column(Boolean, default=False, nullable=False)

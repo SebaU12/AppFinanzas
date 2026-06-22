@@ -52,6 +52,31 @@ cd frontend && npm install
 npm run dev
 ```
 
+### Tests
+```bash
+# Run all tests (from backend/ directory — tests use SQLite in-memory, no DB required)
+cd backend && ../.venv/bin/python -m pytest
+
+# Run a single test file
+cd backend && ../.venv/bin/python -m pytest tests/test_participant.py
+
+# Run a single test
+cd backend && ../.venv/bin/python -m pytest tests/test_participant.py::test_create_participant -v
+```
+
+### Migrations (Alembic)
+```bash
+# Run inside backend container or local venv from backend/ directory
+alembic upgrade head
+alembic revision --autogenerate -m "description"
+```
+
+### Seed Data
+```bash
+# Load category seeds (run from backend/ with venv active or inside container)
+python seeds/categories_seed.py
+```
+
 ### Environment
 Copy `.env.example` to `.env`. Docker services use internal networking (`db:5432`), local development uses `localhost:5432`.
 
@@ -77,14 +102,19 @@ Each domain module follows the pattern: **Model → Schema → Service → Route
 3. **Monthly Budget** — spending limits per category per month (unique on month+category)
 4. **Transactions** — actual income/expenses with payment method (cash/debit/credit) and optional credit card link
 5. **Credit Cards & Installments** — cards have closing/payment days; credit transactions generate `CardInstallment` rows across future months
-6. **Accounts Payable/Receivable** — future obligations generated from installments and reimbursements
-7. **Reimbursements** — month-end settlement of shared expenses split by configurable percentages (excludes `is_personal` categories)
-8. **Expected Purchases** — simulation of future multi-month purchases showing impact on budget, cash flow, and payables without creating real transactions
-9. **Accounting Statements** — Income Statement, Cash Flow, Balance Sheet generated from transaction/installment data
+6. **Debit Cards** — debit card management (separate from credit)
+7. **Accounts Payable/Receivable** — future obligations generated from installments and reimbursements
+8. **Reimbursements** — month-end settlement of shared expenses split by configurable percentages (excludes `is_personal` categories)
+9. **Expected Purchases** — simulation of future multi-month purchases showing impact on budget, cash flow, and payables without creating real transactions
+10. **Accounting Statements** — Income Statement, Cash Flow, Balance Sheet generated from transaction/installment data
+11. **Cash Flow** — dedicated cash flow router (separate from accounting statements)
+12. **CSV Ingestion** — import transactions/budgets from CSV (Google Forms format) via Pandas
+
+The `models/` directory is imported as a package (via `models/__init__.py`) in `conftest.py` to ensure all models are registered with SQLAlchemy's `Base` before table creation.
 
 ### Frontend (React + Vite + Recharts)
 
-Minimal scaffolding. React 18 with Recharts for financial data visualization. No router or state management library yet.
+React 18 with React Router v6, Recharts for visualization. Pages: Dashboard, Budget, Transactions, Reimbursements, CreditCards, DebitCards, Simulation, Settings. All routes are nested under a shared `Layout` component with a `Sidebar`. API calls go through `src/services/api.js` (falls back to mock data on failure).
 
 ### Infrastructure
 
@@ -100,8 +130,8 @@ All services connected via `finanzas-network` bridge network. Backend and fronte
 - Database sessions use `get_db()` dependency (yields session, auto-closes)
 - `Base = declarative_base()` in `database.py` — all models inherit from this
 - `DATABASE_URL` read from env var with fallback to default PostgreSQL connection string
-- CSV ingestion planned via Pandas for Google Forms data import
-- Frontend communicates with backend via `VITE_API_BASE_URL` env var
+- Tests use SQLite in-memory via `conftest.py` — no running database needed to run tests
+- Frontend communicates with backend via `VITE_API_BASE_URL` env var (defaults to `http://localhost:8000`)
 
 ## Development Roadmap
 

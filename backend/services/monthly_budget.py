@@ -11,6 +11,7 @@ from models.monthly_budget import MonthlyBudget
 from models.category import Category
 from models.transaction import Transaction
 from schemas.monthly_budget import MonthlyBudgetCreate, MonthlyBudgetUpdate
+from services.exchange_rate import ExchangeRateService
 
 
 class MonthlyBudgetService:
@@ -201,14 +202,20 @@ class MonthlyBudgetService:
             joinedload(Transaction.category)
         ).all()
 
-        # Calculate actual amounts per category
+        # Calculate actual amounts per category (all amounts converted to PEN)
         actual_by_category = {}
         for transaction in transactions:
             if transaction.category_id:
                 cat_id = str(transaction.category_id)
                 if cat_id not in actual_by_category:
                     actual_by_category[cat_id] = Decimal('0')
-                actual_by_category[cat_id] += Decimal(str(transaction.amount))
+                amount_pen = ExchangeRateService.convert_to_pen(
+                    db,
+                    Decimal(str(transaction.amount)),
+                    transaction.currency,
+                    month,
+                )
+                actual_by_category[cat_id] += amount_pen
 
         # Fetch all categories to build hierarchy
         all_categories = db.query(Category).options(

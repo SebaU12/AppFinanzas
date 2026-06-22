@@ -6,8 +6,8 @@
  * @param {string} currency - Currency code (default: USD)
  * @returns {string} Formatted currency string
  */
-export function formatCurrency(amount, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount, currency = 'PEN') {
+  return new Intl.NumberFormat('es-PE', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 2,

@@ -10,10 +10,11 @@ from datetime import datetime
 
 from models.monthly_reimbursement import MonthlyReimbursement
 from models.reimbursement_detail import ReimbursementDetail
-from models.transaction import Transaction
+from models.transaction import Transaction, Currency
 from models.category import Category, CategoryType
 from models.participant import Participant
 from schemas.monthly_reimbursement import MonthlyReimbursementCreate, MonthlyReimbursementUpdate
+from services.exchange_rate import ExchangeRateService
 
 
 class MonthlyReimbursementService:
@@ -68,11 +69,17 @@ class MonthlyReimbursementService:
             Category.type == CategoryType.EXPENSE  # Only expenses, not income
         ).all()
 
-        # Calculate each participant's contribution
+        # Calculate each participant's contribution (all amounts converted to PEN)
         participant_payments = {p.id: Decimal('0') for p in participants}
 
         for transaction in transactions:
-            participant_payments[transaction.participant_id] += Decimal(str(transaction.amount))
+            amount_pen = ExchangeRateService.convert_to_pen(
+                db,
+                Decimal(str(transaction.amount)),
+                transaction.currency,
+                month,
+            )
+            participant_payments[transaction.participant_id] += amount_pen
 
         # Calculate totals
         total_shared = sum(participant_payments.values())

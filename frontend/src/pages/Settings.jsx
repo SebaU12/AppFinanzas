@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Users, Tag, CreditCard, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Users, Tag, CreditCard, DollarSign, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import './Settings.css';
 
 export default function Settings() {
@@ -14,10 +14,14 @@ export default function Settings() {
   // Form states
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState([]);
   const [editingCreditCard, setEditingCreditCard] = useState(null);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showCreditCardForm, setShowCreditCardForm] = useState(false);
+  const [showExchangeRateForm, setShowExchangeRateForm] = useState(false);
+  const [editingExchangeRate, setEditingExchangeRate] = useState(null);
+  const [exchangeRateForm, setExchangeRateForm] = useState({ month: '', rate: '' });
 
   const [participantForm, setParticipantForm] = useState({
     name: '',
@@ -48,14 +52,16 @@ export default function Settings() {
     try {
       setLoading(true);
       setError(null);
-      const [participantsData, categoriesData, creditCardsData] = await Promise.all([
+      const [participantsData, categoriesData, creditCardsData, ratesData] = await Promise.all([
         api.getParticipants(),
         api.getCategories(),
-        api.getCreditCards()
+        api.getCreditCards(),
+        api.getExchangeRates(),
       ]);
       setParticipants(participantsData);
       setCategories(categoriesData);
       setCreditCards(creditCardsData);
+      setExchangeRates(ratesData);
     } catch (err) {
       setError('Error al cargar los datos de configuración');
       console.error('Error:', err);
@@ -208,6 +214,52 @@ export default function Settings() {
     }
   };
 
+  // Exchange Rate handlers
+  const getCurrentMonthStr = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  const handleAddExchangeRate = () => {
+    setExchangeRateForm({ month: getCurrentMonthStr(), rate: '' });
+    setEditingExchangeRate(null);
+    setShowExchangeRateForm(true);
+  };
+
+  const handleEditExchangeRate = (rate) => {
+    setExchangeRateForm({ month: rate.month, rate: rate.rate });
+    setEditingExchangeRate(rate);
+    setShowExchangeRateForm(true);
+  };
+
+  const handleSaveExchangeRate = async () => {
+    try {
+      const payload = {
+        month: exchangeRateForm.month,
+        from_currency: 'USD',
+        to_currency: 'PEN',
+        rate: parseFloat(exchangeRateForm.rate),
+      };
+      await api.upsertExchangeRate(payload);
+      await loadData();
+      setShowExchangeRateForm(false);
+      setEditingExchangeRate(null);
+    } catch (err) {
+      alert('Error al guardar el tipo de cambio: ' + err.message);
+    }
+  };
+
+  const handleDeleteExchangeRate = async (id) => {
+    if (window.confirm('¿Eliminar este tipo de cambio?')) {
+      try {
+        await api.deleteExchangeRate(id);
+        await loadData();
+      } catch (err) {
+        alert('Error al eliminar el tipo de cambio: ' + err.message);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-container">
@@ -252,6 +304,13 @@ export default function Settings() {
         >
           <CreditCard size={20} />
           Tarjetas de crédito
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'exchangeRates' ? 'active' : ''}`}
+          onClick={() => setActiveTab('exchangeRates')}
+        >
+          <DollarSign size={20} />
+          Tipos de cambio
         </button>
       </div>
 
@@ -663,6 +722,89 @@ export default function Settings() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+      {activeTab === 'exchangeRates' && (
+        <div className="settings-section">
+          <div className="section-header">
+            <h2>Tipos de cambio USD → PEN</h2>
+            <button className="btn-primary" onClick={handleAddExchangeRate}>
+              <Plus size={16} />
+              Agregar tipo de cambio
+            </button>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            Configure el tipo de cambio por mes. Se usa para convertir transacciones en USD a PEN
+            en reembolsos, presupuestos y estados contables.
+          </p>
+
+          {showExchangeRateForm && (
+            <div className="form-card">
+              <h3>{editingExchangeRate ? 'Editar tipo de cambio' : 'Nuevo tipo de cambio'}</h3>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Mes *</label>
+                  <input
+                    type="month"
+                    value={exchangeRateForm.month}
+                    onChange={(e) => setExchangeRateForm({ ...exchangeRateForm, month: e.target.value })}
+                    disabled={!!editingExchangeRate}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>1 USD = ? PEN *</label>
+                  <input
+                    type="number"
+                    min="0.000001"
+                    step="0.01"
+                    value={exchangeRateForm.rate}
+                    onChange={(e) => setExchangeRateForm({ ...exchangeRateForm, rate: e.target.value })}
+                    placeholder="Ej: 3.75"
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button className="btn-primary" onClick={handleSaveExchangeRate}>
+                  <Save size={16} />
+                  Guardar
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => { setShowExchangeRateForm(false); setEditingExchangeRate(null); }}
+                >
+                  <X size={16} />
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="settings-list">
+            {exchangeRates.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                No hay tipos de cambio configurados. Agrega uno para cada mes con transacciones en USD.
+              </div>
+            ) : (
+              [...exchangeRates]
+                .sort((a, b) => b.month.localeCompare(a.month))
+                .map((rate) => (
+                  <div key={rate.id} className="settings-item">
+                    <div className="item-info">
+                      <h3>{rate.month}</h3>
+                      <p>1 USD = <strong>S/ {parseFloat(rate.rate).toFixed(4)}</strong> PEN</p>
+                    </div>
+                    <div className="item-actions">
+                      <button className="btn-icon" onClick={() => handleEditExchangeRate(rate)} title="Editar">
+                        <Edit2 size={16} />
+                      </button>
+                      <button className="btn-icon btn-danger" onClick={() => handleDeleteExchangeRate(rate.id)} title="Eliminar">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
             )}
           </div>
         </div>

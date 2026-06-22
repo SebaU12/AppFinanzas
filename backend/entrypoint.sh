@@ -52,7 +52,7 @@ elif tables_exist and alembic_exists:
     current = row[0] if row else None
     print(f'Revision actual en BD: {current}')
     # If the stored revision is not in our known chain, stamp to initial
-    known = {'001_initial', '002_currency'}
+    known = {'001_initial', '002_currency', '003_exchange_rate'}
     if current and current not in known:
         print(f'Revision {current} no reconocida. Marcando como 001_initial...')
         cur.execute('UPDATE alembic_version SET version_num = %s', ('001_initial',))

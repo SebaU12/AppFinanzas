@@ -200,6 +200,14 @@ export const csvApi = {
   validate: (file) => api.uploadFile('/csv/validate', file),
 };
 
+export const exchangeRatesApi = {
+  getAll: (month = null) => api.get(`/exchange-rates${month ? `?month=${month}` : ''}`),
+  getByMonth: (month) => api.get(`/exchange-rates/month/${month}`),
+  upsert: (data) => api.post('/exchange-rates/upsert', data),
+  update: (id, data) => api.put(`/exchange-rates/${id}`, data),
+  delete: (id) => api.delete(`/exchange-rates/${id}`),
+};
+
 // Unified API interface for easier imports
 export const unifiedApi = {
   // Participants
@@ -264,6 +272,13 @@ export const unifiedApi = {
   // CSV
   importCSV: (file) => csvApi.import(file),
   validateCSV: (file) => csvApi.validate(file),
+
+  // Exchange Rates
+  getExchangeRates: (month = null) => exchangeRatesApi.getAll(month),
+  getExchangeRatesByMonth: (month) => exchangeRatesApi.getByMonth(month),
+  upsertExchangeRate: (data) => exchangeRatesApi.upsert(data),
+  updateExchangeRate: (id, data) => exchangeRatesApi.update(id, data),
+  deleteExchangeRate: (id) => exchangeRatesApi.delete(id),
 };
 
 export { unifiedApi as api };
