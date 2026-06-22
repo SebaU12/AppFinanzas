@@ -15,13 +15,16 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # currency enum already exists from 002_add_currency — use create_type=False
+    currency_type = sa.Enum('PEN', 'USD', name='currency', create_type=False)
+
     # 1. New exchange_rates table
     op.create_table(
         'exchange_rates',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('month', sa.String(7), nullable=False),
-        sa.Column('from_currency', sa.Enum('PEN', 'USD', name='currency'), nullable=False),
-        sa.Column('to_currency', sa.Enum('PEN', 'USD', name='currency'), nullable=False),
+        sa.Column('from_currency', currency_type, nullable=False),
+        sa.Column('to_currency', currency_type, nullable=False),
         sa.Column('rate', sa.Numeric(12, 6), nullable=False),
         sa.UniqueConstraint('month', 'from_currency', 'to_currency',
                             name='uq_exchange_rate_month_pair'),
@@ -32,7 +35,7 @@ def upgrade() -> None:
         'expected_purchases',
         sa.Column(
             'currency',
-            sa.Enum('PEN', 'USD', name='currency'),
+            currency_type,
             nullable=False,
             server_default='PEN',
         ),
