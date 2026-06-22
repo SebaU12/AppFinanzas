@@ -256,7 +256,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>Ingresos totales</p>
-              <h2 style={{ color: 'white', margin: 0 }}>${stats.totalIncome.toLocaleString()}</h2>
+              <h2 style={{ color: 'white', margin: 0 }}>S/ {stats.totalIncome.toLocaleString()}</h2>
             </div>
             <TrendingUp size={32} style={{ color: 'rgba(255,255,255,0.8)' }} />
           </div>
@@ -266,7 +266,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>Gastos totales</p>
-              <h2 style={{ color: 'white', margin: 0 }}>${stats.totalExpenses.toLocaleString()}</h2>
+              <h2 style={{ color: 'white', margin: 0 }}>S/ {stats.totalExpenses.toLocaleString()}</h2>
               <p style={{ color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem', fontSize: '0.75rem' }}>
                 Lo que consumiste
               </p>
@@ -280,7 +280,7 @@ export default function Dashboard() {
             <div>
               <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>Efectivo disponible</p>
               <h2 style={{ color: 'white', margin: 0 }}>
-                ${stats.availableCash.toLocaleString()}
+                S/ {stats.availableCash.toLocaleString()}
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem', fontSize: '0.75rem' }}>
                 Posición real de dinero
@@ -294,7 +294,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>Saldo del presupuesto</p>
-              <h2 style={{ color: 'white', margin: 0 }}>${stats.balance.toLocaleString()}</h2>
+              <h2 style={{ color: 'white', margin: 0 }}>S/ {stats.balance.toLocaleString()}</h2>
               <p style={{ color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem', fontSize: '0.75rem' }}>
                 Vista 
               </p>
@@ -320,7 +320,7 @@ export default function Dashboard() {
                     : 'Debes'}
               </p>
               <h2 style={{ color: 'white', margin: 0 }}>
-                {stats.pendingReimbursements >= 0 ? '+' : ''}${Math.abs(stats.pendingReimbursements).toLocaleString()}
+                {stats.pendingReimbursements >= 0 ? '+' : ''}S/ {Math.abs(stats.pendingReimbursements).toLocaleString()}
               </h2>
             </div>
             <CreditCard size={32} style={{ color: 'rgba(255,255,255,0.8)' }} />
@@ -332,7 +332,7 @@ export default function Dashboard() {
             <div>
               <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>Pagos pendientes de crédito</p>
               <h2 style={{ color: 'white', margin: 0 }}>
-                ${stats.pendingCreditPayments.toLocaleString()}
+                S/ {stats.pendingCreditPayments.toLocaleString()}
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.6)', marginTop: '0.25rem', fontSize: '0.75rem' }}>
                 Cuotas sin pagar

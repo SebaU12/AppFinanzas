@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Wallet, Plus, Edit, Trash2, X, Save, DollarSign } from 'lucide-react';
 import { debitCardsApi, participantsApi, transactionsApi } from '../services/api';
-import { getCurrentMonth } from '../utils/formatters';
+import { getCurrentMonth, currencySymbol } from '../utils/formatters';
 
 export default function DebitCards() {
   const [cards, setCards] = useState([]);
@@ -266,7 +266,7 @@ export default function DebitCards() {
                   Saldo disponible
                 </div>
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: isNegative ? '#ffcccc' : 'white' }}>
-                  ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {currencySymbol(card.currency)} {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
 
@@ -328,7 +328,7 @@ export default function DebitCards() {
         <div className="card" style={{ background: totalBalance >= 0 ? '#569B85' : '#c66666', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Efectivo disponible total</p>
           <h2 style={{ margin: 0 }}>
-            ${totalBalance.toLocaleString()}
+            S/ {totalBalance.toLocaleString()}
           </h2>
         </div>
       </div>

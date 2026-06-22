@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CreditCard as CreditCardIcon, Plus, Edit, Trash2, Calendar, DollarSign, X, Save, Check, Square, CheckSquare } from 'lucide-react';
 import { creditCardsApi, installmentsApi, participantsApi } from '../services/api';
-import { getCurrentMonth, formatLocalDate } from '../utils/formatters';
+import { getCurrentMonth, formatLocalDate, currencySymbol } from '../utils/formatters';
 
 export default function CreditCards() {
   const [cards, setCards] = useState([]);
@@ -91,7 +91,8 @@ export default function CreditCards() {
           currentBalance: totalBalance,
           unpaidBalance: unpaidBalance,
           paidBalance: paidBalance,
-          availableCredit: availableCredit
+          availableCredit: availableCredit,
+          currency: card.currency || 'PEN'
         };
       });
 
@@ -334,13 +335,13 @@ export default function CreditCards() {
                   Crédito disponible
                 </div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>
-                  ${card.availableCredit.toLocaleString()}
+                  {currencySymbol(card.currency)} {card.availableCredit.toLocaleString()}
                 </div>
                 <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.25rem' }}>
-                  de ${card.creditLimit.toLocaleString()} ({(100 - parseFloat(usagePercentage)).toFixed(1)}% disponible)
+                  de {currencySymbol(card.currency)} {card.creditLimit.toLocaleString()} ({(100 - parseFloat(usagePercentage)).toFixed(1)}% disponible)
                 </div>
                 <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                  Pendiente: ${card.unpaidBalance.toLocaleString()} | Pagado: ${card.paidBalance.toLocaleString()} | Total: ${card.currentBalance.toLocaleString()}
+                  Pendiente: {currencySymbol(card.currency)} {card.unpaidBalance.toLocaleString()} | Pagado: {currencySymbol(card.currency)} {card.paidBalance.toLocaleString()} | Total: {currencySymbol(card.currency)} {card.currentBalance.toLocaleString()}
                 </div>
               </div>
 
@@ -519,13 +520,13 @@ export default function CreditCards() {
                           </div>
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
-                          ${inst.monthlyAmount.toLocaleString()}
+                          {currencySymbol(selectedCard?.currency)} {inst.monthlyAmount.toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right' }}>
-                          ${inst.totalAmount.toLocaleString()}
+                          {currencySymbol(selectedCard?.currency)} {inst.totalAmount.toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
-                          ${inst.remainingAmount.toLocaleString()}
+                          {currencySymbol(selectedCard?.currency)} {inst.remainingAmount.toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           {new Date(inst.dueDate).toLocaleDateString()}
@@ -551,19 +552,19 @@ export default function CreditCards() {
         <div className="card" style={{ background: 'var(--accent)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Deuda total</p>
           <h2 style={{ margin: 0 }}>
-            ${cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.currentBalance || 0), 0).toLocaleString()}
+            S/ {cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.currentBalance || 0), 0).toLocaleString()}
           </h2>
         </div>
         <div className="card" style={{ background: '#c66666', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Saldo pendiente</p>
           <h2 style={{ margin: 0 }}>
-            ${cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.unpaidBalance || 0), 0).toLocaleString()}
+            S/ {cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.unpaidBalance || 0), 0).toLocaleString()}
           </h2>
         </div>
         <div className="card" style={{ background: 'var(--secondary)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Crédito disponible</p>
           <h2 style={{ margin: 0 }}>
-            ${cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.availableCredit || 0), 0).toLocaleString()}
+            S/ {cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.availableCredit || 0), 0).toLocaleString()}
           </h2>
         </div>
       </div>

@@ -166,10 +166,10 @@ export default function Budget() {
           </div>
         </td>
         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-          ${category.budgeted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          S/ {category.budgeted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-          ${category.actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          S/ {category.actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </td>
         <td style={{
           padding: '0.75rem 1rem',
@@ -177,7 +177,7 @@ export default function Budget() {
           color: isOverBudget ? '#E78484' : '#569B85',
           fontWeight: 600
         }}>
-          ${Math.abs(category.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          S/ {Math.abs(category.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           {isOverBudget ? ' excedido' : ' por debajo'}
         </td>
         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
@@ -240,17 +240,17 @@ export default function Budget() {
               <tr style={{ borderTop: '2px solid var(--primary)', background: '#f0f0f0', fontWeight: 700 }}>
                 <td style={{ padding: '1rem' }}>Total {title}</td>
                 <td style={{ padding: '1rem', textAlign: 'right' }}>
-                  ${data.total_budgeted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  S/ {data.total_budgeted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td style={{ padding: '1rem', textAlign: 'right' }}>
-                  ${data.total_actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  S/ {data.total_actual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td style={{
                   padding: '1rem',
                   textAlign: 'right',
                   color: data.variance < 0 ? '#E78484' : '#569B85'
                 }}>
-                  ${Math.abs(data.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  S/ {Math.abs(data.variance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   {data.variance < 0 ? ' excedido' : ' por debajo'}
                 </td>
                 <td style={{ padding: '1rem' }}></td>
@@ -340,19 +340,19 @@ export default function Budget() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="card" style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Ingresos presupuestados</p>
-              <h2 style={{ margin: 0 }}>${budgetData.income.total_budgeted.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.income.total_budgeted.toLocaleString()}</h2>
             </div>
             <div className="card" style={{ background: 'linear-gradient(135deg, #569B85, #3d7a61)', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Ingresos reales</p>
-              <h2 style={{ margin: 0 }}>${budgetData.income.total_actual.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.income.total_actual.toLocaleString()}</h2>
             </div>
             <div className="card" style={{ background: 'linear-gradient(135deg, var(--accent), #c66666)', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Gastos presupuestados</p>
-              <h2 style={{ margin: 0 }}>${budgetData.expenses.total_budgeted.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.expenses.total_budgeted.toLocaleString()}</h2>
             </div>
             <div className="card" style={{ background: 'linear-gradient(135deg, #E78484, #c66666)', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Gastos reales</p>
-              <h2 style={{ margin: 0 }}>${budgetData.expenses.total_actual.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.expenses.total_actual.toLocaleString()}</h2>
             </div>
             <div className="card" style={{
               background: budgetData.net.actual >= 0
@@ -361,7 +361,7 @@ export default function Budget() {
               color: 'white'
             }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Neto (presupuestado)</p>
-              <h2 style={{ margin: 0 }}>${budgetData.net.budgeted.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.net.budgeted.toLocaleString()}</h2>
             </div>
             <div className="card" style={{
               background: budgetData.net.actual >= 0
@@ -370,7 +370,7 @@ export default function Budget() {
               color: 'white'
             }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Neto (real)</p>
-              <h2 style={{ margin: 0 }}>${budgetData.net.actual.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {budgetData.net.actual.toLocaleString()}</h2>
             </div>
           </div>
 

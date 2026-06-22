@@ -160,13 +160,13 @@ export default function Simulation() {
                     <td style={{ padding: '1rem', fontWeight: 600 }}>{purchase.description}</td>
                     <td style={{ padding: '1rem' }}>{purchase.category}</td>
                     <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
-                      ${purchase.totalAmount.toLocaleString()}
+                      {purchase.currency === 'USD' ? '$' : 'S/'} {purchase.totalAmount.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       {purchase.installments}x
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)' }}>
-                      ${purchase.monthlyAmount.toLocaleString()}
+                      {purchase.currency === 'USD' ? '$' : 'S/'} {purchase.monthlyAmount.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       {new Date(purchase.startMonth + '-01').toLocaleDateString('en', { month: 'short', year: 'numeric' })}
@@ -195,11 +195,11 @@ export default function Simulation() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="card" style={{ background: 'var(--accent)', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Deuda adicional total</p>
-              <h2 style={{ margin: 0 }}>${simulationResult.totalAdditionalDebt.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {simulationResult.totalAdditionalDebt.toLocaleString()}</h2>
             </div>
             <div className="card" style={{ background: 'var(--secondary)', color: 'white' }}>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Promedio mensual</p>
-              <h2 style={{ margin: 0 }}>${simulationResult.monthlyAverageIncrease.toLocaleString()}</h2>
+              <h2 style={{ margin: 0 }}>S/ {simulationResult.monthlyAverageIncrease.toLocaleString()}</h2>
             </div>
             <div className="card" style={{
               background: simulationResult.affordabilityStatus === 'safe' ? 'var(--primary)' :
@@ -289,13 +289,13 @@ export default function Simulation() {
                       <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
                         <td style={{ padding: '1rem', fontWeight: 600 }}>{month.month}</td>
                         <td style={{ padding: '1rem', textAlign: 'right' }}>
-                          ${month.baseline.toLocaleString()}
+                          S/ {month.baseline.toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
-                          ${month.withPurchases.toLocaleString()}
+                          S/ {month.withPurchases.toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
-                          ${Math.abs(month.difference).toLocaleString()}
+                          S/ {Math.abs(month.difference).toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>

@@ -6,6 +6,10 @@
  * @param {string} currency - Currency code (default: USD)
  * @returns {string} Formatted currency string
  */
+export function currencySymbol(currency = 'PEN') {
+  return currency === 'USD' ? '$' : 'S/';
+}
+
 export function formatCurrency(amount, currency = 'PEN') {
   return new Intl.NumberFormat('es-PE', {
     style: 'currency',

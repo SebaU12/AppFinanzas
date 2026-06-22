@@ -179,18 +179,18 @@ export default function Reimbursements() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             <div>
               <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Total de gastos compartidos</p>
-              <h3 style={{ margin: 0 }}>${summary.totalSharedExpenses.toLocaleString()}</h3>
+              <h3 style={{ margin: 0 }}>S/ {summary.totalSharedExpenses.toLocaleString()}</h3>
             </div>
             {summary.participants.map(p => (
               <div key={p.participantId}>
                 <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>
                   Cuota esperada de {p.participantName} ({p.percentage}%)
                 </p>
-                <h3 style={{ margin: 0 }}>${p.expectedShare.toLocaleString()}</h3>
+                <h3 style={{ margin: 0 }}>S/ {p.expectedShare.toLocaleString()}</h3>
                 <p style={{ opacity: 0.8, marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                  Pagado: ${p.amountPaid.toLocaleString()}
+                  Pagado: S/ {p.amountPaid.toLocaleString()}
                   {' • '}
-                  Saldo: {p.balance >= 0 ? '+' : ''}${p.balance.toLocaleString()}
+                  Saldo: {p.balance >= 0 ? '+' : ''}S/ {p.balance.toLocaleString()}
                 </p>
               </div>
             ))}
@@ -251,10 +251,10 @@ export default function Reimbursements() {
                       {detail.percentage}%
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
-                      ${detail.amountPaid.toLocaleString()}
+                      S/ {detail.amountPaid.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      ${detail.expectedShare.toLocaleString()}
+                      S/ {detail.expectedShare.toLocaleString()}
                     </td>
                     <td style={{
                       padding: '1rem',
@@ -262,7 +262,7 @@ export default function Reimbursements() {
                       fontWeight: 600,
                       color: detail.balance >= 0 ? 'var(--primary)' : 'var(--accent)'
                     }}>
-                      {detail.balance >= 0 ? '+' : ''}${detail.balance.toLocaleString()}
+                      {detail.balance >= 0 ? '+' : ''}S/ {detail.balance.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       {detail.balance > 0 ? (
