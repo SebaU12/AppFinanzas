@@ -5,8 +5,6 @@ Revises: 002_currency
 Create Date: 2026-06-22 00:00:00.000000
 """
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = '003_exchange_rate'
 down_revision = '002_currency'
@@ -15,33 +13,29 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # currency enum already exists from 002_add_currency — use create_type=False
-    currency_type = sa.Enum('PEN', 'USD', name='currency', create_type=False)
+    # Use raw SQL to avoid SQLAlchemy trying to CREATE the currency enum type
+    # that already exists from migration 002_add_currency.
 
     # 1. New exchange_rates table
-    op.create_table(
-        'exchange_rates',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('month', sa.String(7), nullable=False),
-        sa.Column('from_currency', currency_type, nullable=False),
-        sa.Column('to_currency', currency_type, nullable=False),
-        sa.Column('rate', sa.Numeric(12, 6), nullable=False),
-        sa.UniqueConstraint('month', 'from_currency', 'to_currency',
-                            name='uq_exchange_rate_month_pair'),
-    )
+    op.execute("""
+        CREATE TABLE exchange_rates (
+            id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            month       VARCHAR(7)  NOT NULL,
+            from_currency currency  NOT NULL,
+            to_currency   currency  NOT NULL,
+            rate        NUMERIC(12, 6) NOT NULL,
+            CONSTRAINT uq_exchange_rate_month_pair
+                UNIQUE (month, from_currency, to_currency)
+        )
+    """)
 
     # 2. Add currency column to expected_purchases
-    op.add_column(
-        'expected_purchases',
-        sa.Column(
-            'currency',
-            currency_type,
-            nullable=False,
-            server_default='PEN',
-        ),
-    )
+    op.execute("""
+        ALTER TABLE expected_purchases
+        ADD COLUMN currency currency NOT NULL DEFAULT 'PEN'
+    """)
 
 
 def downgrade() -> None:
-    op.drop_column('expected_purchases', 'currency')
-    op.drop_table('exchange_rates')
+    op.execute("ALTER TABLE expected_purchases DROP COLUMN currency")
+    op.execute("DROP TABLE exchange_rates")
