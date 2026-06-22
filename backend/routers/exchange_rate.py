@@ -12,7 +12,7 @@ from schemas.exchange_rate import ExchangeRateCreate, ExchangeRateUpdate, Exchan
 router = APIRouter(prefix="/exchange-rates", tags=["exchange-rates"])
 
 
-@router.get("", response_model=list[ExchangeRateResponse])
+@router.get("/", response_model=list[ExchangeRateResponse])
 def list_rates(
     month: str | None = Query(None, description="Filter by month (YYYY-MM)"),
     db: Session = Depends(get_db),
@@ -27,7 +27,7 @@ def get_rates_for_month(month: str, db: Session = Depends(get_db)):
     return ExchangeRateService.get_by_month(db, month)
 
 
-@router.post("", response_model=ExchangeRateResponse, status_code=201)
+@router.post("/", response_model=ExchangeRateResponse, status_code=201)
 def create_rate(data: ExchangeRateCreate, db: Session = Depends(get_db)):
     """Create a new exchange rate for a month."""
     return ExchangeRateService.create(db, data)
