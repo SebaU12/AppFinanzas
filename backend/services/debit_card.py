@@ -69,8 +69,11 @@ class DebitCardService:
 
     @staticmethod
     def delete(db: Session, card_id: UUID) -> None:
-        """Delete a debit card"""
+        """Delete a debit card, unlinking any transactions that reference it"""
         card = DebitCardService.get_by_id(db, card_id)
+        db.query(Transaction).filter(Transaction.debit_card_id == card_id).update(
+            {Transaction.debit_card_id: None}, synchronize_session=False
+        )
         db.delete(card)
         db.commit()
 
