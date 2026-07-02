@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Download, X, Save } from 'lucide-react';
 import { transactionsApi, participantsApi, categoriesApi, creditCardsApi, debitCardsApi } from '../services/api';
-import { getCurrentMonth, formatLocalDate } from '../utils/formatters';
+import { getCurrentMonth, formatLocalDate, currencySymbol } from '../utils/formatters';
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
@@ -174,7 +174,10 @@ export default function Transactions() {
       setEditingTransaction(null);
       setCategoryStep(1);
       setSelectedParentCategory(null);
-      await fetchTransactions();
+      await Promise.all([
+        fetchTransactions(),
+        debitCardsApi.getAll().then(setDebitCards)
+      ]);
     } catch (err) {
       alert('Error al guardar la transacción: ' + err.message);
     }
@@ -727,7 +730,7 @@ export default function Transactions() {
                       .filter(card => card.participant_id === transactionForm.participant_id)
                       .map((card) => (
                         <option key={card.id} value={card.id}>
-                          {card.name} - ${parseFloat(card.current_balance || 0).toLocaleString()}
+                          {card.name} - {currencySymbol(card.currency)}{parseFloat(card.current_balance || 0).toLocaleString()}
                         </option>
                       ))}
                   </select>
