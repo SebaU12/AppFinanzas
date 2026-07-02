@@ -194,6 +194,56 @@ export default function Transactions() {
     }
   };
 
+  const handleExport = () => {
+    const paymentMethodLabel = (method) => {
+      if (method === 'cash') return 'Efectivo';
+      if (method === 'debit') return 'Débito';
+      if (method === 'credit') return 'Crédito';
+      return method || '';
+    };
+
+    const getCardName = (t) => {
+      if (t.payment_method === 'credit' && t.card_id) {
+        return creditCards.find(c => c.id === t.card_id)?.name || '';
+      }
+      if (t.payment_method === 'debit' && t.debit_card_id) {
+        return debitCards.find(c => c.id === t.debit_card_id)?.name || '';
+      }
+      return '';
+    };
+
+    const escape = (val) => {
+      const str = String(val ?? '');
+      return str.includes(',') || str.includes('"') || str.includes('\n')
+        ? `"${str.replace(/"/g, '""')}"`
+        : str;
+    };
+
+    const headers = ['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Participante', 'Monto', 'Moneda', 'Método de pago', 'Tarjeta', 'Cuotas'];
+    const rows = filteredTransactions.map(t => [
+      t.date,
+      t.description || '',
+      t.category || '',
+      t.type === 'income' ? 'Ingreso' : 'Gasto',
+      t.participant || '',
+      t.amount,
+      t.currency || 'PEN',
+      paymentMethodLabel(t.payment_method),
+      getCardName(t),
+      t.installment_count || 1,
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.map(escape).join(',')).join('\n');
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transacciones_${getCurrentMonth()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredTransactions = transactions.filter(t => {
     if (filters.search && !t.description.toLowerCase().includes(filters.search.toLowerCase())) {
       return false;
@@ -359,7 +409,7 @@ export default function Transactions() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0 }}>Transacciones recientes</h3>
-          <button className="btn-icon" title="Exportar">
+          <button className="btn-icon" title="Exportar a Excel" onClick={handleExport}>
             <Download size={20} />
           </button>
         </div>
@@ -716,7 +766,10 @@ export default function Transactions() {
                   </label>
                   <select
                     value={transactionForm.debit_card_id}
-                    onChange={(e) => setTransactionForm({ ...transactionForm, debit_card_id: e.target.value })}
+                    onChange={(e) => {
+                      const selectedCard = debitCards.find(c => c.id === e.target.value);
+                      setTransactionForm({ ...transactionForm, debit_card_id: e.target.value, currency: selectedCard?.currency || transactionForm.currency });
+                    }}
                     style={{
                       width: '100%',
                       padding: '0.75rem',
@@ -754,7 +807,10 @@ export default function Transactions() {
                     </label>
                     <select
                       value={transactionForm.card_id}
-                      onChange={(e) => setTransactionForm({ ...transactionForm, card_id: e.target.value })}
+                      onChange={(e) => {
+                        const selectedCard = creditCards.find(c => c.id === e.target.value);
+                        setTransactionForm({ ...transactionForm, card_id: e.target.value, currency: selectedCard?.currency || transactionForm.currency });
+                      }}
                       style={{
                         width: '100%',
                         padding: '0.75rem',
