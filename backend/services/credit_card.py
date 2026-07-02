@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 
 from models.credit_card import CreditCard
+from models.card_installment import CardInstallment
 from schemas.credit_card import CreditCardCreate, CreditCardUpdate
 
 
@@ -71,7 +72,19 @@ class CreditCardService:
 
     @staticmethod
     def delete(db: Session, card_id: UUID) -> None:
-        """Delete a credit card"""
+        """Delete a credit card, blocked if there are unpaid installments"""
         card = CreditCardService.get_by_id(db, card_id)
+
+        pending = db.query(CardInstallment).filter(
+            CardInstallment.credit_card_id == card_id,
+            CardInstallment.paid == False
+        ).count()
+
+        if pending > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"No se puede eliminar la tarjeta: tiene {pending} cuota(s) pendiente(s) de pago."
+            )
+
         db.delete(card)
         db.commit()

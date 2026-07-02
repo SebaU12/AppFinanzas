@@ -135,6 +135,25 @@ def mark_installment_paid(
     return CardInstallmentService.update(db, installment_id, update_data)
 
 
+@router.patch("/bulk-mark-paid")
+def bulk_mark_installments_paid(
+    installment_ids: list[UUID],
+    paid: bool = True,
+    db: Session = Depends(get_db)
+):
+    """
+    Mark multiple installments as paid or unpaid in a single request.
+    """
+    updated = 0
+    for inst_id in installment_ids:
+        try:
+            CardInstallmentService.update(db, inst_id, CardInstallmentUpdate(paid=paid))
+            updated += 1
+        except Exception:
+            pass
+    return {"updated": updated}
+
+
 @router.delete("/{installment_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_installment(
     installment_id: UUID,

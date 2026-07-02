@@ -161,6 +161,7 @@ export const installmentsApi = {
   getAll: () => api.get('/installments'),
   getByMonth: (month) => api.get(`/installments/month/${month}`),
   markPaid: (id, paid = true) => api.request(`/installments/${id}/mark-paid?paid=${paid}`, { method: 'PATCH' }),
+  bulkMarkPaid: (ids, paid = true) => api.request(`/installments/bulk-mark-paid?paid=${paid}`, { method: 'PATCH', body: JSON.stringify(ids) }),
   update: (id, data) => api.put(`/installments/${id}`, data),
 };
 

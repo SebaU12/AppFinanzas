@@ -14,6 +14,7 @@ export default function CreditCards() {
   const [editingCard, setEditingCard] = useState(null);
   const [installmentFilter, setInstallmentFilter] = useState('active'); // 'active', 'historical', 'all'
   const [participantFilter, setParticipantFilter] = useState('all'); // Filter cards by participant
+  const [selectedInstallments, setSelectedInstallments] = useState(new Set());
   const [cardForm, setCardForm] = useState({
     name: '',
     participant_id: '',
@@ -31,6 +32,7 @@ export default function CreditCards() {
   useEffect(() => {
     if (selectedCard) {
       fetchInstallments(selectedCard.id);
+      setSelectedInstallments(new Set());
     }
   }, [selectedCard]);
 
@@ -232,13 +234,45 @@ export default function CreditCards() {
   const handleToggleInstallmentPaid = async (installment) => {
     try {
       await installmentsApi.markPaid(installment.id, !installment.paid);
-      // Refresh installments
       if (selectedCard) {
         await fetchInstallments(selectedCard.id);
-        await fetchCreditCards(); // Also refresh card balances
+        await fetchCreditCards();
       }
     } catch (err) {
       alert('Error al actualizar la cuota: ' + err.message);
+    }
+  };
+
+  const handleToggleSelectInstallment = (id) => {
+    setSelectedInstallments(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (visibleInstallments) => {
+    const allIds = visibleInstallments.map(i => i.id);
+    const allSelected = allIds.every(id => selectedInstallments.has(id));
+    if (allSelected) {
+      setSelectedInstallments(new Set());
+    } else {
+      setSelectedInstallments(new Set(allIds));
+    }
+  };
+
+  const handleBulkMarkPaid = async (visibleInstallments) => {
+    const ids = [...selectedInstallments];
+    if (ids.length === 0) return;
+    try {
+      await installmentsApi.bulkMarkPaid(ids, true);
+      setSelectedInstallments(new Set());
+      if (selectedCard) {
+        await fetchInstallments(selectedCard.id);
+        await fetchCreditCards();
+      }
+    } catch (err) {
+      alert('Error al marcar cuotas como pagadas: ' + err.message);
     }
   };
 
@@ -433,111 +467,142 @@ export default function CreditCards() {
             </div>
           </div>
 
-          {installments.filter(inst => {
-            if (installmentFilter === 'active') return !inst.paid;
-            if (installmentFilter === 'historical') return inst.paid;
-            return true; // 'all'
-          }).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
-              No hay cuotas {installmentFilter === 'active' ? 'activas' : installmentFilter === 'historical' ? 'históricas' : ''} para esta tarjeta
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--primary)' }}>
-                    <th style={{ textAlign: 'center', padding: '1rem', width: '60px' }}>Pagada</th>
-                    <th style={{ textAlign: 'left', padding: '1rem' }}>Descripción</th>
-                    <th style={{ textAlign: 'center', padding: '1rem' }}>Progreso</th>
-                    <th style={{ textAlign: 'right', padding: '1rem' }}>Mensual</th>
-                    <th style={{ textAlign: 'right', padding: '1rem' }}>Total</th>
-                    <th style={{ textAlign: 'right', padding: '1rem' }}>Restante</th>
-                    <th style={{ textAlign: 'center', padding: '1rem' }}>Próximo vencimiento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {installments.filter(inst => {
-                    if (installmentFilter === 'active') return !inst.paid;
-                    if (installmentFilter === 'historical') return inst.paid;
-                    return true; // 'all'
-                  }).map(inst => {
-                    const progress = ((inst.installmentNumber / inst.totalInstallments) * 100).toFixed(0);
+          {(() => {
+            const visibleInstallments = installments.filter(inst => {
+              if (installmentFilter === 'active') return !inst.paid;
+              if (installmentFilter === 'historical') return inst.paid;
+              return true;
+            });
+            const allSelected = visibleInstallments.length > 0 && visibleInstallments.every(i => selectedInstallments.has(i.id));
+            const someSelected = selectedInstallments.size > 0;
 
-                    return (
-                      <tr
-                        key={inst.id}
-                        style={{
-                          borderBottom: '1px solid #e0e0e0',
-                          opacity: inst.paid ? 0.6 : 1,
-                          background: inst.paid ? '#f5f5f5' : 'transparent'
-                        }}
-                      >
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+            if (visibleInstallments.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                  No hay cuotas {installmentFilter === 'active' ? 'activas' : installmentFilter === 'historical' ? 'históricas' : ''} para esta tarjeta
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {someSelected && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--primary-light, #e8f0fe)', borderRadius: '0.5rem' }}>
+                    <span style={{ fontWeight: 600 }}>{selectedInstallments.size} cuota(s) seleccionada(s)</span>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleBulkMarkPaid(visibleInstallments)}
+                      style={{ padding: '0.4rem 1rem' }}
+                    >
+                      <Check size={16} />
+                      Confirmar pago
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => setSelectedInstallments(new Set())}
+                      style={{ padding: '0.4rem 1rem' }}
+                    >
+                      <X size={16} />
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--primary)' }}>
+                        <th style={{ textAlign: 'center', padding: '1rem', width: '48px' }}>
                           <button
-                            onClick={() => handleToggleInstallmentPaid(inst)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              padding: '0.25rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: inst.paid ? 'var(--primary)' : '#999'
-                            }}
-                            title={inst.paid ? 'Marcar como no pagada' : 'Marcar como pagada'}
+                            onClick={() => handleSelectAll(visibleInstallments)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: allSelected ? 'var(--primary)' : '#999' }}
+                            title={allSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
                           >
-                            {inst.paid ? <CheckSquare size={24} /> : <Square size={24} />}
+                            {allSelected ? <CheckSquare size={20} /> : <Square size={20} />}
                           </button>
-                        </td>
-                        <td style={{ padding: '1rem', fontWeight: 600 }}>
-                          {inst.description}
-                          {inst.paid && (
-                            <span style={{
-                              marginLeft: '0.5rem',
-                              fontSize: '0.75rem',
-                              color: 'var(--primary)',
-                              fontWeight: 'normal'
-                            }}>
-                              (Pagada)
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                              {inst.installmentNumber} / {inst.totalInstallments}
-                            </div>
-                            <div style={{ width: '100%', maxWidth: '100px', background: '#e0e0e0', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                              <div
-                                style={{
-                                  background: 'var(--primary)',
-                                  height: '100%',
-                                  width: `${progress}%`
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
-                          {currencySymbol(selectedCard?.currency)} {inst.monthlyAmount.toLocaleString()}
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
-                          {currencySymbol(selectedCard?.currency)} {inst.totalAmount.toLocaleString()}
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
-                          {currencySymbol(selectedCard?.currency)} {inst.remainingAmount.toLocaleString()}
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                          {new Date(inst.dueDate).toLocaleDateString()}
-                        </td>
+                        </th>
+                        <th style={{ textAlign: 'center', padding: '1rem', width: '60px' }}>Pagada</th>
+                        <th style={{ textAlign: 'left', padding: '1rem' }}>Descripción</th>
+                        <th style={{ textAlign: 'center', padding: '1rem' }}>Progreso</th>
+                        <th style={{ textAlign: 'right', padding: '1rem' }}>Mensual</th>
+                        <th style={{ textAlign: 'right', padding: '1rem' }}>Total</th>
+                        <th style={{ textAlign: 'right', padding: '1rem' }}>Restante</th>
+                        <th style={{ textAlign: 'center', padding: '1rem' }}>Próximo vencimiento</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    </thead>
+                    <tbody>
+                      {visibleInstallments.map(inst => {
+                        const progress = ((inst.installmentNumber / inst.totalInstallments) * 100).toFixed(0);
+                        const isSelected = selectedInstallments.has(inst.id);
+
+                        return (
+                          <tr
+                            key={inst.id}
+                            style={{
+                              borderBottom: '1px solid #e0e0e0',
+                              opacity: inst.paid ? 0.6 : 1,
+                              background: isSelected ? 'var(--primary-light, #e8f0fe)' : inst.paid ? '#f5f5f5' : 'transparent',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => !inst.paid && handleToggleSelectInstallment(inst.id)}
+                          >
+                            <td style={{ padding: '1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                              {!inst.paid && (
+                                <button
+                                  onClick={() => handleToggleSelectInstallment(inst.id)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isSelected ? 'var(--primary)' : '#999' }}
+                                >
+                                  {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+                                </button>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => handleToggleInstallmentPaid(inst)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: inst.paid ? 'var(--primary)' : '#999' }}
+                                title={inst.paid ? 'Marcar como no pagada' : 'Marcar como pagada'}
+                              >
+                                {inst.paid ? <CheckSquare size={24} /> : <Square size={24} />}
+                              </button>
+                            </td>
+                            <td style={{ padding: '1rem', fontWeight: 600 }}>
+                              {inst.description}
+                              {inst.paid && (
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 'normal' }}>
+                                  (Pagada)
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                                  {inst.installmentNumber} / {inst.totalInstallments}
+                                </div>
+                                <div style={{ width: '100%', maxWidth: '100px', background: '#e0e0e0', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                                  <div style={{ background: 'var(--primary)', height: '100%', width: `${progress}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
+                              {currencySymbol(selectedCard?.currency)} {inst.monthlyAmount.toLocaleString()}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'right' }}>
+                              {currencySymbol(selectedCard?.currency)} {inst.totalAmount.toLocaleString()}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
+                              {currencySymbol(selectedCard?.currency)} {inst.remainingAmount.toLocaleString()}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              {new Date(inst.dueDate).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
