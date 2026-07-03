@@ -164,7 +164,9 @@ export default function CreditCards() {
             monthlyAmount: monthlyAmount,
             remainingAmount: remainingAmount,
             dueDate: dueDate,
-            paid: inst.paid || false
+            paid: inst.paid || false,
+            paidWithDebitCardId: inst.paid_with_debit_card_id || null,
+            paidDate: inst.paid_date || null,
           };
         });
 
@@ -505,11 +507,22 @@ export default function CreditCards() {
           </div>
 
           {(() => {
-            const visibleInstallments = installments.filter(inst => {
+            const isHistorical = installmentFilter === 'historical';
+            let visibleInstallments = installments.filter(inst => {
               if (installmentFilter === 'active') return !inst.paid;
               if (installmentFilter === 'historical') return inst.paid;
               return true;
             });
+
+            // Históricas: ordenar por fecha de pago al banco (más reciente primero, nulls al final)
+            if (isHistorical) {
+              visibleInstallments = [...visibleInstallments].sort((a, b) => {
+                if (!a.paidDate && !b.paidDate) return 0;
+                if (!a.paidDate) return 1;
+                if (!b.paidDate) return -1;
+                return new Date(b.paidDate) - new Date(a.paidDate);
+              });
+            }
             const allSelected = visibleInstallments.length > 0 && visibleInstallments.every(i => selectedInstallments.has(i.id));
             const someSelected = selectedInstallments.size > 0;
 
@@ -563,8 +576,10 @@ export default function CreditCards() {
                         <th style={{ textAlign: 'center', padding: '1rem' }}>Progreso</th>
                         <th style={{ textAlign: 'right', padding: '1rem' }}>Mensual</th>
                         <th style={{ textAlign: 'right', padding: '1rem' }}>Total</th>
-                        <th style={{ textAlign: 'right', padding: '1rem' }}>Restante</th>
-                        <th style={{ textAlign: 'center', padding: '1rem' }}>Próximo vencimiento</th>
+                        {!isHistorical && <th style={{ textAlign: 'right', padding: '1rem' }}>Restante</th>}
+                        {!isHistorical && <th style={{ textAlign: 'center', padding: '1rem' }}>Próximo vencimiento</th>}
+                        {isHistorical && <th style={{ textAlign: 'center', padding: '1rem' }}>Pagado con</th>}
+                        {isHistorical && <th style={{ textAlign: 'center', padding: '1rem' }}>Fecha pago banco</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -631,12 +646,30 @@ export default function CreditCards() {
                             <td style={{ padding: '1rem', textAlign: 'right' }}>
                               {currencySymbol(selectedCard?.currency)} {inst.totalAmount.toLocaleString()}
                             </td>
-                            <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
-                              {currencySymbol(selectedCard?.currency)} {inst.remainingAmount.toLocaleString()}
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              {new Date(inst.dueDate).toLocaleDateString()}
-                            </td>
+                            {!isHistorical && (
+                              <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
+                                {currencySymbol(selectedCard?.currency)} {inst.remainingAmount.toLocaleString()}
+                              </td>
+                            )}
+                            {!isHistorical && (
+                              <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                {new Date(inst.dueDate).toLocaleDateString()}
+                              </td>
+                            )}
+                            {isHistorical && (
+                              <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>
+                                {inst.paidWithDebitCardId
+                                  ? (debitCards.find(dc => dc.id === inst.paidWithDebitCardId)?.name || '—')
+                                  : <span style={{ color: '#bbb' }}>—</span>}
+                              </td>
+                            )}
+                            {isHistorical && (
+                              <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>
+                                {inst.paidDate
+                                  ? new Date(inst.paidDate + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                  : <span style={{ color: '#bbb' }}>—</span>}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}

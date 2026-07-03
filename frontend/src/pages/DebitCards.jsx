@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Plus, Edit, Trash2, X, Save, DollarSign } from 'lucide-react';
-import { debitCardsApi, participantsApi, transactionsApi } from '../services/api';
-import { getCurrentMonth, currencySymbol } from '../utils/formatters';
+import { Wallet, Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { debitCardsApi, participantsApi } from '../services/api';
+import { currencySymbol } from '../utils/formatters';
 
 export default function DebitCards() {
   const [cards, setCards] = useState([]);
@@ -10,8 +10,7 @@ export default function DebitCards() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
-  const [tempMonth, setTempMonth] = useState(getCurrentMonth()); // Temporary value for input
+  const [participantFilter, setParticipantFilter] = useState('all');
   const [cardForm, setCardForm] = useState({
     name: '',
     participant_id: '',
@@ -24,64 +23,19 @@ export default function DebitCards() {
   useEffect(() => {
     fetchDebitCards();
     fetchParticipants();
-  }, [selectedMonth]);
+  }, []);
 
   const fetchDebitCards = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await debitCardsApi.getAll();
-
-      // Calculate balance as of selected month
-      const cardsWithHistoricalBalance = await Promise.all(
-        data.map(async (card) => {
-          const balance = await calculateBalanceAsOfMonth(card, selectedMonth);
-          return {
-            ...card,
-            historical_balance: balance
-          };
-        })
-      );
-
-      setCards(cardsWithHistoricalBalance);
+      setCards(data);
     } catch (err) {
       console.error('Error fetching debit cards:', err);
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const calculateBalanceAsOfMonth = async (card, month) => {
-    try {
-      // Get all transactions for this card
-      const allTransactions = await transactionsApi.getAll();
-      const cardTransactions = allTransactions.filter(
-        t => t.debit_card_id === card.id && t.payment_method === 'debit'
-      );
-
-      // Start with initial balance
-      let balance = parseFloat(card.initial_balance || 0);
-
-      // Add/subtract transactions up to the END of selected month
-      const [year, monthNum] = month.split('-').map(Number);
-      const endOfMonth = new Date(year, monthNum, 0); // Last day of the month
-
-      cardTransactions.forEach(t => {
-        const transactionDate = new Date(t.date);
-        if (transactionDate <= endOfMonth) {
-          if (t.category?.type === 'income') {
-            balance += parseFloat(t.amount);
-          } else if (t.category?.type === 'expense') {
-            balance -= parseFloat(t.amount);
-          }
-        }
-      });
-
-      return balance;
-    } catch (err) {
-      console.error('Error calculating balance:', err);
-      return parseFloat(card.current_balance || 0);
     }
   };
 
@@ -171,8 +125,11 @@ export default function DebitCards() {
     );
   }
 
-  const totalBalance = cards.reduce((sum, card) => sum + parseFloat(card.historical_balance || card.current_balance || 0), 0);
-  const activeCards = cards.filter(c => c.active);
+  const filteredCards = cards.filter(card =>
+    participantFilter === 'all' || card.participant?.name === participantFilter
+  );
+  const activeCards = filteredCards.filter(c => c.active);
+  const totalBalance = filteredCards.reduce((sum, card) => sum + parseFloat(card.current_balance || 0), 0);
 
   return (
     <div className="page">
@@ -199,42 +156,29 @@ export default function DebitCards() {
         </button>
       </div>
 
-      {/* Month Filter */}
+      {/* Participant Filter */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <label htmlFor="month-filter" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-          Ver saldo al
+        <label htmlFor="participant-filter" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+          Filtrar por titular de la cuenta
         </label>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <input
-            id="month-filter"
-            type="month"
-            className="input"
-            value={tempMonth}
-            onChange={(e) => setTempMonth(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setSelectedMonth(tempMonth);
-              }
-            }}
-            style={{ maxWidth: '300px' }}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={() => setSelectedMonth(tempMonth)}
-            style={{ padding: '0.75rem 1.5rem' }}
-          >
-            Aplicar
-          </button>
-        </div>
-        <small style={{ display: 'block', marginTop: '0.25rem', color: '#666' }}>
-          Muestra el saldo al final del mes seleccionado. Haz clic en Aplicar o presiona Enter para actualizar.
-        </small>
+        <select
+          id="participant-filter"
+          className="input"
+          value={participantFilter}
+          onChange={(e) => setParticipantFilter(e.target.value)}
+          style={{ maxWidth: '300px' }}
+        >
+          <option value="all">Todos los participantes</option>
+          {participants.map((p) => (
+            <option key={p.id} value={p.name}>{p.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {cards.map(card => {
-          const balance = parseFloat(card.historical_balance || card.current_balance || 0);
+        {filteredCards.map(card => {
+          const balance = parseFloat(card.current_balance || 0);
           const isNegative = balance < 0;
 
           return (
@@ -302,7 +246,7 @@ export default function DebitCards() {
           );
         })}
 
-        {cards.length === 0 && (
+        {filteredCards.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
             <Wallet size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
             <h3 style={{ marginBottom: '0.5rem' }}>Aún no hay tarjetas de débito</h3>
@@ -319,7 +263,7 @@ export default function DebitCards() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
         <div className="card" style={{ background: 'var(--primary)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Total de cuentas</p>
-          <h2 style={{ margin: 0 }}>{cards.length}</h2>
+          <h2 style={{ margin: 0 }}>{filteredCards.length}</h2>
         </div>
         <div className="card" style={{ background: 'var(--secondary)', color: 'white' }}>
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Cuentas activas</p>
