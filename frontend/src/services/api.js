@@ -160,8 +160,18 @@ export const debitCardsApi = {
 export const installmentsApi = {
   getAll: () => api.get('/installments'),
   getByMonth: (month) => api.get(`/installments/month/${month}`),
-  markPaid: (id, paid = true) => api.request(`/installments/${id}/mark-paid?paid=${paid}`, { method: 'PATCH' }),
-  bulkMarkPaid: (ids, paid = true) => api.request(`/installments/bulk-mark-paid?paid=${paid}`, { method: 'PATCH', body: JSON.stringify(ids) }),
+  markPaid: (id, paid = true, debitCardId = null, paidDate = null) => {
+    let url = `/installments/${id}/mark-paid?paid=${paid}`;
+    if (paid && debitCardId) url += `&debit_card_id=${debitCardId}`;
+    if (paid && paidDate) url += `&paid_date=${paidDate}`;
+    return api.request(url, { method: 'PATCH' });
+  },
+  bulkMarkPaid: (ids, paid = true, debitCardId = null, paidDate = null) => {
+    let url = `/installments/bulk-mark-paid?paid=${paid}`;
+    if (paid && debitCardId) url += `&debit_card_id=${debitCardId}`;
+    if (paid && paidDate) url += `&paid_date=${paidDate}`;
+    return api.request(url, { method: 'PATCH', body: JSON.stringify(ids) });
+  },
   update: (id, data) => api.put(`/installments/${id}`, data),
 };
 

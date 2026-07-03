@@ -82,12 +82,16 @@ class DebitCardService:
         """
         Calculate current balance of a debit card.
 
-        Balance = initial_balance + income_transactions - expense_transactions
-        where transactions have payment_method = DEBIT and debit_card_id = card_id
+        Balance = initial_balance
+                + income_transactions (payment_method=DEBIT, debit_card_id=card_id)
+                - expense_transactions (payment_method=DEBIT, debit_card_id=card_id)
+                - credit_card_payments (installments paid using this debit card)
         """
+        from models.card_installment import CardInstallment
+
         card = DebitCardService.get_by_id(db, card_id)
 
-        # Get all transactions for this debit card
+        # Get all debit transactions for this card
         transactions = db.query(Transaction).filter(
             Transaction.debit_card_id == card_id,
             Transaction.payment_method == PaymentMethod.DEBIT
@@ -95,7 +99,6 @@ class DebitCardService:
             joinedload(Transaction.category)
         ).all()
 
-        # Calculate balance
         balance = float(card.initial_balance)
 
         for transaction in transactions:
@@ -103,6 +106,15 @@ class DebitCardService:
                 balance += float(transaction.amount)
             elif transaction.category.type == 'expense':
                 balance -= float(transaction.amount)
+
+        # Subtract credit card payments made from this debit card (transfers, not expenses)
+        credit_payments = db.query(CardInstallment).filter(
+            CardInstallment.paid_with_debit_card_id == card_id,
+            CardInstallment.paid == True
+        ).all()
+
+        for payment in credit_payments:
+            balance -= float(payment.amount)
 
         return Decimal(str(balance)).quantize(Decimal('0.01'))
 

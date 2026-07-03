@@ -2,6 +2,7 @@
 API routes for CardInstallment operations.
 """
 from uuid import UUID
+from datetime import date
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 
@@ -119,19 +120,25 @@ def update_installment(
 def mark_installment_paid(
     installment_id: UUID,
     paid: bool = True,
+    debit_card_id: UUID | None = Query(None, description="Debit card used to pay"),
+    paid_date: date | None = Query(None, description="Date the payment was made"),
     db: Session = Depends(get_db)
 ):
     """
     Mark an installment as paid or unpaid.
 
-    This endpoint is used to track when actual cash leaves the account
-    to pay the credit card bill (cash flow), as opposed to when the
-    purchase was made (accrual accounting).
+    When marking as paid, optionally record which debit card was used
+    and the date. This creates the cash flow record: debit balance decreases.
 
-    - **installment_id**: The installment to update
     - **paid**: True to mark as paid, False to mark as unpaid (default: True)
+    - **debit_card_id**: Debit card from which the payment was made (optional)
+    - **paid_date**: Date the bank payment was made (optional)
     """
-    update_data = CardInstallmentUpdate(paid=paid)
+    update_data = CardInstallmentUpdate(
+        paid=paid,
+        paid_with_debit_card_id=debit_card_id if paid else None,
+        paid_date=paid_date if paid else None,
+    )
     return CardInstallmentService.update(db, installment_id, update_data)
 
 
@@ -139,15 +146,23 @@ def mark_installment_paid(
 def bulk_mark_installments_paid(
     installment_ids: list[UUID],
     paid: bool = True,
+    debit_card_id: UUID | None = Query(None, description="Debit card used to pay"),
+    paid_date: date | None = Query(None, description="Date the payment was made"),
     db: Session = Depends(get_db)
 ):
     """
     Mark multiple installments as paid or unpaid in a single request.
+
+    Optionally records which debit card was used and the payment date.
     """
     updated = 0
     for inst_id in installment_ids:
         try:
-            CardInstallmentService.update(db, inst_id, CardInstallmentUpdate(paid=paid))
+            CardInstallmentService.update(db, inst_id, CardInstallmentUpdate(
+                paid=paid,
+                paid_with_debit_card_id=debit_card_id if paid else None,
+                paid_date=paid_date if paid else None,
+            ))
             updated += 1
         except Exception:
             pass

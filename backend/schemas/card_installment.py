@@ -3,6 +3,7 @@ Pydantic schemas for CardInstallment operations.
 """
 from uuid import UUID
 from decimal import Decimal
+from datetime import date
 from pydantic import BaseModel, Field, field_validator
 from typing import TYPE_CHECKING
 import re
@@ -45,11 +46,15 @@ class CardInstallmentCreate(CardInstallmentBase):
 class CardInstallmentUpdate(BaseModel):
     """Schema for updating a CardInstallment"""
     paid: bool | None = None
+    paid_with_debit_card_id: UUID | None = None
+    paid_date: date | None = None
 
 
 class CardInstallmentResponse(CardInstallmentBase):
     """Schema for CardInstallment response"""
     id: UUID
+    paid_with_debit_card_id: UUID | None = None
+    paid_date: date | None = None
     transaction: 'TransactionResponse | None' = None
 
     class Config:

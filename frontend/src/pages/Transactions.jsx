@@ -38,9 +38,13 @@ export default function Transactions() {
   });
 
   useEffect(() => {
-    fetchTransactions();
     fetchFormData();
   }, []);
+
+  // Re-fetch when date filters change
+  useEffect(() => {
+    fetchTransactions(filters.dateFrom, filters.dateTo);
+  }, [filters.dateFrom, filters.dateTo]);
 
   const fetchFormData = async () => {
     try {
@@ -59,14 +63,23 @@ export default function Transactions() {
     }
   };
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (dateFrom = '', dateTo = '') => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch current month transactions by default
-      const currentMonth = getCurrentMonth();
-      const data = await transactionsApi.getByMonth(currentMonth);
+      let data;
+      if (dateFrom || dateTo) {
+        // Fetch from backend with date range when filters are active
+        const params = { limit: 1000 };
+        if (dateFrom) params.start_date = dateFrom;
+        if (dateTo) params.end_date = dateTo;
+        data = await transactionsApi.getAll(params);
+      } else {
+        // Default: load current month only
+        const currentMonth = getCurrentMonth();
+        data = await transactionsApi.getByMonth(currentMonth);
+      }
 
       // Map API response to component format
       const mappedData = data.map(t => ({
@@ -175,7 +188,7 @@ export default function Transactions() {
       setCategoryStep(1);
       setSelectedParentCategory(null);
       await Promise.all([
-        fetchTransactions(),
+        fetchTransactions(filters.dateFrom, filters.dateTo),
         debitCardsApi.getAll().then(setDebitCards)
       ]);
     } catch (err) {
@@ -187,7 +200,7 @@ export default function Transactions() {
     if (window.confirm(`¿Seguro que quieres eliminar esta transacción?`)) {
       try {
         await transactionsApi.delete(transaction.id);
-        await fetchTransactions();
+        await fetchTransactions(filters.dateFrom, filters.dateTo);
       } catch (err) {
         alert('Error al eliminar la transacción: ' + err.message);
       }

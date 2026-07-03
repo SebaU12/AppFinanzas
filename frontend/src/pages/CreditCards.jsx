@@ -15,6 +15,10 @@ export default function CreditCards() {
   const [installmentFilter, setInstallmentFilter] = useState('active'); // 'active', 'historical', 'all'
   const [participantFilter, setParticipantFilter] = useState('all'); // Filter cards by participant
   const [selectedInstallments, setSelectedInstallments] = useState(new Set());
+  const [debitCards, setDebitCards] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ debit_card_id: '', paid_date: new Date().toISOString().split('T')[0] });
+  const [pendingPayment, setPendingPayment] = useState(null); // { type: 'single'|'bulk', installment?, ids? }
   const [cardForm, setCardForm] = useState({
     name: '',
     participant_id: '',
@@ -27,6 +31,7 @@ export default function CreditCards() {
   useEffect(() => {
     fetchCreditCards();
     fetchParticipants();
+    fetchDebitCards();
   }, []);
 
   useEffect(() => {
@@ -180,6 +185,16 @@ export default function CreditCards() {
     }
   };
 
+  const fetchDebitCards = async () => {
+    try {
+      const { debitCardsApi } = await import('../services/api');
+      const data = await debitCardsApi.getAll();
+      setDebitCards(data);
+    } catch (err) {
+      console.error('Error fetching debit cards:', err);
+    }
+  };
+
   const handleAddCard = () => {
     setCardForm({
       name: '',
@@ -233,14 +248,43 @@ export default function CreditCards() {
   };
 
   const handleToggleInstallmentPaid = async (installment) => {
+    if (!installment.paid) {
+      // Marking as paid: open payment modal
+      setPendingPayment({ type: 'single', installment });
+      setPaymentForm({ debit_card_id: debitCards[0]?.id || '', paid_date: new Date().toISOString().split('T')[0] });
+      setShowPaymentModal(true);
+    } else {
+      // Unmarking: no debit card needed
+      try {
+        await installmentsApi.markPaid(installment.id, false);
+        if (selectedCard) {
+          await fetchInstallments(selectedCard.id);
+          await fetchCreditCards();
+        }
+      } catch (err) {
+        alert('Error al actualizar la cuota: ' + err.message);
+      }
+    }
+  };
+
+  const handleConfirmPayment = async () => {
     try {
-      await installmentsApi.markPaid(installment.id, !installment.paid);
+      const { debit_card_id, paid_date } = paymentForm;
+      if (pendingPayment.type === 'single') {
+        await installmentsApi.markPaid(pendingPayment.installment.id, true, debit_card_id || null, paid_date || null);
+      } else {
+        const ids = [...selectedInstallments];
+        await installmentsApi.bulkMarkPaid(ids, true, debit_card_id || null, paid_date || null);
+        setSelectedInstallments(new Set());
+      }
+      setShowPaymentModal(false);
+      setPendingPayment(null);
       if (selectedCard) {
         await fetchInstallments(selectedCard.id);
         await fetchCreditCards();
       }
     } catch (err) {
-      alert('Error al actualizar la cuota: ' + err.message);
+      alert('Error al registrar el pago: ' + err.message);
     }
   };
 
@@ -262,19 +306,11 @@ export default function CreditCards() {
     }
   };
 
-  const handleBulkMarkPaid = async (visibleInstallments) => {
-    const ids = [...selectedInstallments];
-    if (ids.length === 0) return;
-    try {
-      await installmentsApi.bulkMarkPaid(ids, true);
-      setSelectedInstallments(new Set());
-      if (selectedCard) {
-        await fetchInstallments(selectedCard.id);
-        await fetchCreditCards();
-      }
-    } catch (err) {
-      alert('Error al marcar cuotas como pagadas: ' + err.message);
-    }
+  const handleBulkMarkPaid = () => {
+    if (selectedInstallments.size === 0) return;
+    setPendingPayment({ type: 'bulk' });
+    setPaymentForm({ debit_card_id: debitCards[0]?.id || '', paid_date: new Date().toISOString().split('T')[0] });
+    setShowPaymentModal(true);
   };
 
   if (loading) {
@@ -833,6 +869,80 @@ export default function CreditCards() {
                   onClick={() => setShowModal(false)}
                   style={{ flex: 1 }}
                 >
+                  <X size={16} />
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de pago de cuota — transferencia desde débito */}
+      {showPaymentModal && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowPaymentModal(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: '420px', width: '90%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0 }}>Registrar pago al banco</h3>
+              <button onClick={() => setShowPaymentModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              Este pago es una <strong>transferencia</strong> de tu cuenta de débito a la tarjeta de crédito.
+              No cuenta como gasto nuevo — el gasto ya fue registrado cuando hiciste la compra.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Cuenta de débito origen
+                </label>
+                <select
+                  className="input"
+                  value={paymentForm.debit_card_id}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, debit_card_id: e.target.value })}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Sin registrar (solo marcar pagada)</option>
+                  {debitCards.map(dc => (
+                    <option key={dc.id} value={dc.id}>
+                      {dc.name} {dc.participant?.name ? `(${dc.participant.name})` : ''} — Saldo: {currencySymbol(dc.currency)} {parseFloat(dc.current_balance || 0).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem' }}>
+                  Si seleccionas una cuenta, su saldo se reducirá por el monto de la(s) cuota(s).
+                </small>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  Fecha del pago
+                </label>
+                <input
+                  type="date"
+                  className="input"
+                  value={paymentForm.paid_date}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, paid_date: e.target.value })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <button className="btn btn-primary" onClick={handleConfirmPayment} style={{ flex: 1 }}>
+                  <Check size={16} />
+                  Confirmar pago
+                </button>
+                <button className="btn" onClick={() => setShowPaymentModal(false)} style={{ flex: 1 }}>
                   <X size={16} />
                   Cancelar
                 </button>
