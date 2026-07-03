@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Users, Tag, CreditCard, DollarSign, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Users, Tag, DollarSign, Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import './Settings.css';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('participants');
   const [participants, setParticipants] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [creditCards, setCreditCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -15,10 +14,8 @@ export default function Settings() {
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [exchangeRates, setExchangeRates] = useState([]);
-  const [editingCreditCard, setEditingCreditCard] = useState(null);
   const [showParticipantForm, setShowParticipantForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showCreditCardForm, setShowCreditCardForm] = useState(false);
   const [showExchangeRateForm, setShowExchangeRateForm] = useState(false);
   const [editingExchangeRate, setEditingExchangeRate] = useState(null);
   const [exchangeRateForm, setExchangeRateForm] = useState({ month: '', rate: '' });
@@ -36,14 +33,6 @@ export default function Settings() {
     parent_id: null
   });
 
-  const [creditCardForm, setCreditCardForm] = useState({
-    name: '',
-    participant_id: '',
-    closing_day: 15,
-    payment_day: 5,
-    currency: 'PEN'
-  });
-
   useEffect(() => {
     loadData();
   }, []);
@@ -52,15 +41,13 @@ export default function Settings() {
     try {
       setLoading(true);
       setError(null);
-      const [participantsData, categoriesData, creditCardsData, ratesData] = await Promise.all([
+      const [participantsData, categoriesData, ratesData] = await Promise.all([
         api.getParticipants(),
         api.getCategories(),
-        api.getCreditCards(),
         api.getExchangeRates(),
       ]);
       setParticipants(participantsData);
       setCategories(categoriesData);
-      setCreditCards(creditCardsData);
       setExchangeRates(ratesData);
     } catch (err) {
       setError('Error al cargar los datos de configuración');
@@ -163,57 +150,6 @@ export default function Settings() {
     }
   };
 
-  // Credit Card handlers
-  const handleAddCreditCard = () => {
-    setCreditCardForm({
-      name: '',
-      participant_id: participants[0]?.id || '',
-      closing_day: 15,
-      payment_day: 5,
-      currency: 'PEN'
-    });
-    setEditingCreditCard(null);
-    setShowCreditCardForm(true);
-  };
-
-  const handleEditCreditCard = (card) => {
-    setCreditCardForm({
-      name: card.name,
-      participant_id: card.participant_id,
-      closing_day: card.closing_day,
-      payment_day: card.payment_day,
-      currency: card.currency || 'PEN'
-    });
-    setEditingCreditCard(card);
-    setShowCreditCardForm(true);
-  };
-
-  const handleSaveCreditCard = async () => {
-    try {
-      if (editingCreditCard) {
-        await api.updateCreditCard(editingCreditCard.id, creditCardForm);
-      } else {
-        await api.createCreditCard(creditCardForm);
-      }
-      await loadData();
-      setShowCreditCardForm(false);
-      setEditingCreditCard(null);
-    } catch (err) {
-      alert('Error al guardar la tarjeta de crédito: ' + err.message);
-    }
-  };
-
-  const handleDeleteCreditCard = async (id) => {
-    if (window.confirm('¿Seguro que quieres eliminar esta tarjeta de crédito? Esto puede afectar transacciones existentes.')) {
-      try {
-        await api.deleteCreditCard(id);
-        await loadData();
-      } catch (err) {
-        alert('Error al eliminar la tarjeta de crédito: ' + err.message);
-      }
-    }
-  };
-
   // Exchange Rate handlers
   const getCurrentMonthStr = () => {
     const now = new Date();
@@ -297,13 +233,6 @@ export default function Settings() {
         >
           <Tag size={20} />
           Categorías
-        </button>
-        <button
-          className={`tab-button ${activeTab === 'creditCards' ? 'active' : ''}`}
-          onClick={() => setActiveTab('creditCards')}
-        >
-          <CreditCard size={20} />
-          Tarjetas de crédito
         </button>
         <button
           className={`tab-button ${activeTab === 'exchangeRates' ? 'active' : ''}`}
@@ -592,140 +521,6 @@ export default function Settings() {
         </div>
       )}
 
-      {activeTab === 'creditCards' && (
-        <div className="settings-section">
-          <div className="section-header">
-            <h2>Tarjetas de crédito</h2>
-            <button className="btn-primary" onClick={handleAddCreditCard}>
-              <Plus size={16} />
-              Agregar tarjeta de crédito
-            </button>
-          </div>
-
-          {showCreditCardForm && (
-            <div className="form-card">
-              <h3>{editingCreditCard ? 'Editar tarjeta de crédito' : 'Nueva tarjeta de crédito'}</h3>
-              <div className="form-group">
-                <label>Nombre de la tarjeta *</label>
-                <input
-                  type="text"
-                  value={creditCardForm.name}
-                  onChange={(e) => setCreditCardForm({ ...creditCardForm, name: e.target.value })}
-                  placeholder="Ingresa el nombre de la tarjeta (p. ej., Visa Platinum)"
-                />
-              </div>
-              <div className="form-group">
-                <label>Titular (participante) *</label>
-                <select
-                  value={creditCardForm.participant_id}
-                  onChange={(e) => setCreditCardForm({ ...creditCardForm, participant_id: e.target.value })}
-                >
-                  <option value="">Seleccionar participante</option>
-                  {participants.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Día de cierre *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={creditCardForm.closing_day}
-                    onChange={(e) => setCreditCardForm({
-                      ...creditCardForm,
-                      closing_day: parseInt(e.target.value)
-                    })}
-                  />
-                  <small>Día del mes (1-31)</small>
-                </div>
-                <div className="form-group">
-                  <label>Día de pago *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={creditCardForm.payment_day}
-                    onChange={(e) => setCreditCardForm({
-                      ...creditCardForm,
-                      payment_day: parseInt(e.target.value)
-                    })}
-                  />
-                  <small>Día del mes (1-31)</small>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Moneda *</label>
-                <select
-                  value={creditCardForm.currency}
-                  onChange={(e) => setCreditCardForm({ ...creditCardForm, currency: e.target.value })}
-                >
-                  <option value="PEN">S/ Soles (PEN)</option>
-                  <option value="USD">$ Dólares (USD)</option>
-                </select>
-              </div>
-              <div className="form-actions">
-                <button className="btn-primary" onClick={handleSaveCreditCard}>
-                  <Save size={16} />
-                  Guardar
-                </button>
-                <button
-                  className="btn-secondary"
-                  onClick={() => {
-                    setShowCreditCardForm(false);
-                    setEditingCreditCard(null);
-                  }}
-                >
-                  <X size={16} />
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="settings-list">
-            {creditCards.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                Aún no hay tarjetas de crédito. Agrega una para empezar a registrar gastos con crédito.
-              </div>
-            ) : (
-              creditCards.map((card) => (
-                <div key={card.id} className="settings-item">
-                  <div className="item-info">
-                    <h3>{card.name}</h3>
-                    <p>
-                      Titular: {participants.find(p => p.id === card.participant_id)?.name || 'Desconocido'} •
-                      Cierre: día {card.closing_day} •
-                      Pago: día {card.payment_day} •
-                      {card.currency === 'USD' ? '$ USD' : 'S/ PEN'}
-                    </p>
-                  </div>
-                  <div className="item-actions">
-                    <button
-                      className="btn-icon"
-                      onClick={() => handleEditCreditCard(card)}
-                      title="Editar"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      className="btn-icon btn-danger"
-                      onClick={() => handleDeleteCreditCard(card.id)}
-                      title="Eliminar"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
       {activeTab === 'exchangeRates' && (
         <div className="settings-section">
           <div className="section-header">
