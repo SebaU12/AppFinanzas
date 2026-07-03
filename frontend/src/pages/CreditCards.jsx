@@ -152,6 +152,7 @@ export default function CreditCards() {
           return {
             id: inst.id,
             description: transaction.description || 'Desconocido',
+            purchaseDate: transaction.date || null,
             totalAmount: totalAmount,
             installmentNumber: installmentNumber,
             totalInstallments: totalInstallments,
@@ -522,6 +523,7 @@ export default function CreditCards() {
                         </th>
                         <th style={{ textAlign: 'center', padding: '1rem', width: '60px' }}>Pagada</th>
                         <th style={{ textAlign: 'left', padding: '1rem' }}>Descripción</th>
+                        <th style={{ textAlign: 'center', padding: '1rem' }}>Fecha compra</th>
                         <th style={{ textAlign: 'center', padding: '1rem' }}>Progreso</th>
                         <th style={{ textAlign: 'right', padding: '1rem' }}>Mensual</th>
                         <th style={{ textAlign: 'right', padding: '1rem' }}>Total</th>
@@ -571,6 +573,11 @@ export default function CreditCards() {
                                   (Pagada)
                                 </span>
                               )}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                              {inst.purchaseDate
+                                ? new Date(inst.purchaseDate + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                : '—'}
                             </td>
                             <td style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
