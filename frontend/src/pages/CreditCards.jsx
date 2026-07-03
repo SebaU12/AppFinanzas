@@ -412,7 +412,7 @@ export default function CreditCards() {
                   de {currencySymbol(card.currency)} {card.creditLimit.toLocaleString()} ({(100 - parseFloat(usagePercentage)).toFixed(1)}% disponible)
                 </div>
                 <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                  Pendiente: {currencySymbol(card.currency)} {card.unpaidBalance.toLocaleString()} | Pagado: {currencySymbol(card.currency)} {card.paidBalance.toLocaleString()} | Total: {currencySymbol(card.currency)} {card.currentBalance.toLocaleString()}
+                  Pendiente: {currencySymbol(card.currency)} {card.unpaidBalance.toLocaleString()} | Pagado: {currencySymbol(card.currency)} {card.paidBalance.toLocaleString()}
                 </div>
               </div>
 
@@ -655,12 +655,6 @@ export default function CreditCards() {
           <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Total de tarjetas</p>
           <h2 style={{ margin: 0 }}>
             {cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).length}
-          </h2>
-        </div>
-        <div className="card" style={{ background: 'var(--accent)', color: 'white' }}>
-          <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Deuda total</p>
-          <h2 style={{ margin: 0 }}>
-            S/ {cards.filter(c => participantFilter === 'all' || c.owner === participantFilter).reduce((sum, c) => sum + (c.currentBalance || 0), 0).toLocaleString()}
           </h2>
         </div>
         <div className="card" style={{ background: '#c66666', color: 'white' }}>
