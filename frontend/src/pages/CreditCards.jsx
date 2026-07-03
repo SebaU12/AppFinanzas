@@ -412,7 +412,7 @@ export default function CreditCards() {
                   de {currencySymbol(card.currency)} {card.creditLimit.toLocaleString()} ({(100 - parseFloat(usagePercentage)).toFixed(1)}% disponible)
                 </div>
                 <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                  Pendiente: {currencySymbol(card.currency)} {card.unpaidBalance.toLocaleString()} | Pagado: {currencySymbol(card.currency)} {card.paidBalance.toLocaleString()}
+                  Pendiente al banco: {currencySymbol(card.currency)} {card.unpaidBalance.toLocaleString()}
                 </div>
               </div>
 
