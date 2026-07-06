@@ -4,7 +4,7 @@ CardInstallment model - Tracks installment payments for credit card transactions
 import uuid
 from sqlalchemy import Column, String, Numeric, Boolean, Integer, ForeignKey, Date
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.database import Base
 
 
@@ -23,7 +23,7 @@ class CardInstallment(Base):
     paid_date = Column(Date, nullable=True)
 
     # Relationships
-    transaction = relationship("Transaction", backref="installments")
+    transaction = relationship("Transaction", backref=backref("installments", cascade="all, delete-orphan"))
     credit_card = relationship("CreditCard", backref="installments")
     paid_debit_card = relationship("DebitCard", backref="installment_payments")
 

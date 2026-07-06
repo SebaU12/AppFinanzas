@@ -38,12 +38,20 @@ class CardInstallmentService:
         total_rounded = installment_amount * transaction.installment_count
         adjustment = Decimal(str(transaction.amount)) - total_rounded
 
-        # Generate installments for consecutive months
+        # Determine the starting month based on the card's closing day.
+        # If the purchase date is after the closing day, the expense falls into
+        # the NEXT billing cycle, so the first installment starts next month.
         current_date = transaction.date
+        month_offset = 0
+        if transaction.card_id:
+            card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
+            if card and current_date.day >= card.closing_day:
+                month_offset = 1
+
         for i in range(transaction.installment_count):
             # Calculate the month for this installment
             year = current_date.year
-            month = current_date.month + i
+            month = current_date.month + i + month_offset
 
             # Handle year rollover
             while month > 12:
