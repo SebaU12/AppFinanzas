@@ -152,7 +152,7 @@ export default function CreditCards() {
           // Parse month to create due date using the card's payment day
           const [year, month] = inst.month.split('-');
           const paymentDay = selectedCard?.paymentDay || 1;
-          const dueDate = new Date(parseInt(year), parseInt(month) - 1, paymentDay);
+          const dueDate = new Date(parseInt(year), parseInt(month), paymentDay);
 
           return {
             id: inst.id,
