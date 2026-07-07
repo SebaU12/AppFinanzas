@@ -127,7 +127,7 @@ class DebitCardService:
         # Subtract outgoing transfers (money leaving this card)
         outgoing = db.query(Transfer).filter(
             Transfer.from_debit_card_id == card_id,
-            Transfer.from_type == TransferSourceType.DEBIT
+            Transfer.from_type == TransferSourceType.DEBIT.value
         ).all()
         for t in outgoing:
             balance -= float(t.amount)
