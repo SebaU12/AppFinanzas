@@ -42,11 +42,15 @@ class CardInstallmentService:
         # If the purchase date is after the closing day, the expense falls into
         # the NEXT billing cycle, so the first installment starts next month.
         current_date = transaction.date
-        month_offset = 0
+        # Determine the starting month using the "payment month" approach:
+        # - day < closing_day: purchase is in the current billing cycle → payment next month (offset=1)
+        # - day >= closing_day: purchase is in the NEXT billing cycle → payment in 2 months (offset=2)
+        # If no card/closing_day is available, default to offset=1.
+        month_offset = 1
         if transaction.card_id:
             card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
-            if card and current_date.day >= card.closing_day:
-                month_offset = 1
+            if card:
+                month_offset = 2 if current_date.day >= card.closing_day else 1
 
         for i in range(transaction.installment_count):
             # Calculate the month for this installment
