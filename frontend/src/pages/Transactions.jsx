@@ -711,7 +711,7 @@ export default function Transactions() {
                       .filter(c => c.id !== transferForm.to_debit_card_id)
                       .map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                          {c.name}{c.participant ? ` (${c.participant.name})` : ''} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
                         </option>
                       ))}
                   </select>
@@ -730,7 +730,7 @@ export default function Transactions() {
                     .filter(c => c.id !== transferForm.from_debit_card_id)
                     .map(c => (
                       <option key={c.id} value={c.id}>
-                        {c.name} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                        {c.name}{c.participant ? ` (${c.participant.name})` : ''} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
                       </option>
                     ))}
                 </select>
