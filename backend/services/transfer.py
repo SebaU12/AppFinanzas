@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 
 from models.transfer import Transfer, TransferSourceType
 from models.debit_card import DebitCard
+from models.participant import Participant
 from schemas.transfer import TransferCreate
 
 
@@ -34,14 +35,18 @@ class TransferService:
         transfer = Transfer(**data.model_dump())
         db.add(transfer)
         db.commit()
-        db.refresh(transfer)
+        # Reload with relationships for enrichment
+        transfer = db.query(Transfer).options(
+            joinedload(Transfer.from_debit_card).joinedload(DebitCard.participant),
+            joinedload(Transfer.to_debit_card).joinedload(DebitCard.participant)
+        ).filter(Transfer.id == transfer.id).first()
         return TransferService._enrich(db, transfer)
 
     @staticmethod
     def get_all(db: Session, start_date: date | None = None, end_date: date | None = None) -> list[dict]:
         query = db.query(Transfer).options(
-            joinedload(Transfer.from_debit_card),
-            joinedload(Transfer.to_debit_card)
+            joinedload(Transfer.from_debit_card).joinedload(DebitCard.participant),
+            joinedload(Transfer.to_debit_card).joinedload(DebitCard.participant)
         )
         if start_date:
             query = query.filter(Transfer.date >= start_date)
@@ -53,8 +58,8 @@ class TransferService:
     @staticmethod
     def get_by_id(db: Session, transfer_id: UUID) -> dict:
         transfer = db.query(Transfer).options(
-            joinedload(Transfer.from_debit_card),
-            joinedload(Transfer.to_debit_card)
+            joinedload(Transfer.from_debit_card).joinedload(DebitCard.participant),
+            joinedload(Transfer.to_debit_card).joinedload(DebitCard.participant)
         ).filter(Transfer.id == transfer_id).first()
         if not transfer:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -72,6 +77,12 @@ class TransferService:
 
     @staticmethod
     def _enrich(db: Session, transfer: Transfer) -> dict:
+        def card_label(card):
+            if not card:
+                return None
+            participant_name = card.participant.name if card.participant else None
+            return f"{card.name} ({participant_name})" if participant_name else card.name
+
         return {
             "id": transfer.id,
             "date": transfer.date,
@@ -81,6 +92,6 @@ class TransferService:
             "from_debit_card_id": transfer.from_debit_card_id,
             "to_debit_card_id": transfer.to_debit_card_id,
             "description": transfer.description,
-            "from_debit_card_name": transfer.from_debit_card.name if transfer.from_debit_card else None,
-            "to_debit_card_name": transfer.to_debit_card.name if transfer.to_debit_card else None,
+            "from_debit_card_name": card_label(transfer.from_debit_card),
+            "to_debit_card_name": card_label(transfer.to_debit_card),
         }
