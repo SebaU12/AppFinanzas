@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CreditCard as CreditCardIcon, Plus, Edit, Trash2, Calendar, DollarSign, X, Save, Check, Square, CheckSquare } from 'lucide-react';
 import { creditCardsApi, installmentsApi, participantsApi } from '../services/api';
-import { getCurrentMonth, formatLocalDate, currencySymbol } from '../utils/formatters';
+import { getCurrentMonth, formatLocalDate, formatDDMMYYYY, currencySymbol } from '../utils/formatters';
 
 export default function CreditCards() {
   const [cards, setCards] = useState([]);
@@ -653,7 +653,7 @@ export default function CreditCards() {
                             )}
                             {!isHistorical && (
                               <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                {new Date(inst.dueDate).toLocaleDateString()}
+                                {formatDDMMYYYY(inst.dueDate)}
                               </td>
                             )}
                             {isHistorical && (

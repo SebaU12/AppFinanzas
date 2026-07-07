@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, Download, X, Save } from 'lucide-react';
-import { transactionsApi, participantsApi, categoriesApi, creditCardsApi, debitCardsApi } from '../services/api';
+import { Plus, Search, Filter, Edit, Trash2, Download, X, Save, ArrowLeftRight } from 'lucide-react';
+import { transactionsApi, participantsApi, categoriesApi, creditCardsApi, debitCardsApi, transfersApi } from '../services/api';
 import { getCurrentMonth, formatLocalDate, currencySymbol } from '../utils/formatters';
 
 export default function Transactions() {
@@ -20,6 +20,17 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transfers, setTransfers] = useState([]);
+  const [transferForm, setTransferForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    currency: 'PEN',
+    from_type: 'cash',
+    from_debit_card_id: '',
+    to_debit_card_id: '',
+    description: ''
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categoryStep, setCategoryStep] = useState(1); // 1 = select parent, 2 = select subcategory
@@ -39,11 +50,13 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchFormData();
+    fetchTransfers();
   }, []);
 
   // Re-fetch when date filters change
   useEffect(() => {
     fetchTransactions(filters.dateFrom, filters.dateTo);
+    fetchTransfers(filters.dateFrom, filters.dateTo);
   }, [filters.dateFrom, filters.dateTo]);
 
   const fetchFormData = async () => {
@@ -60,6 +73,24 @@ export default function Transactions() {
       setDebitCards(debitCardsData);
     } catch (err) {
       console.error('Error fetching form data:', err);
+    }
+  };
+
+  const fetchTransfers = async (dateFrom = '', dateTo = '') => {
+    try {
+      let data;
+      if (dateFrom || dateTo) {
+        const params = {};
+        if (dateFrom) params.start_date = dateFrom;
+        if (dateTo) params.end_date = dateTo;
+        data = await transfersApi.getAll(params);
+      } else {
+        data = await transfersApi.getByMonth(getCurrentMonth());
+      }
+      setTransfers(data);
+    } catch (err) {
+      console.error('Error fetching transfers:', err);
+      setTransfers([]);
     }
   };
 
@@ -189,6 +220,7 @@ export default function Transactions() {
       setSelectedParentCategory(null);
       await Promise.all([
         fetchTransactions(filters.dateFrom, filters.dateTo),
+        fetchTransfers(filters.dateFrom, filters.dateTo),
         debitCardsApi.getAll().then(setDebitCards)
       ]);
     } catch (err) {
@@ -203,6 +235,57 @@ export default function Transactions() {
         await fetchTransactions(filters.dateFrom, filters.dateTo);
       } catch (err) {
         alert('Error al eliminar la transacción: ' + err.message);
+      }
+    }
+  };
+
+  const handleOpenTransferModal = () => {
+    setTransferForm({
+      date: new Date().toISOString().split('T')[0],
+      amount: '',
+      currency: 'PEN',
+      from_type: 'cash',
+      from_debit_card_id: '',
+      to_debit_card_id: '',
+      description: ''
+    });
+    setShowTransferModal(true);
+  };
+
+  const handleSaveTransfer = async () => {
+    try {
+      const payload = {
+        date: transferForm.date,
+        amount: parseFloat(transferForm.amount),
+        currency: transferForm.currency,
+        from_type: transferForm.from_type,
+        to_debit_card_id: transferForm.to_debit_card_id,
+        description: transferForm.description || null
+      };
+      if (transferForm.from_type === 'debit') {
+        payload.from_debit_card_id = transferForm.from_debit_card_id;
+      }
+      await transfersApi.create(payload);
+      setShowTransferModal(false);
+      await Promise.all([
+        fetchTransfers(filters.dateFrom, filters.dateTo),
+        debitCardsApi.getAll().then(setDebitCards)
+      ]);
+    } catch (err) {
+      alert('Error al guardar la transferencia: ' + err.message);
+    }
+  };
+
+  const handleDeleteTransfer = async (transfer) => {
+    if (window.confirm('¿Seguro que quieres eliminar esta transferencia?')) {
+      try {
+        await transfersApi.delete(transfer.id);
+        await Promise.all([
+          fetchTransfers(filters.dateFrom, filters.dateTo),
+          debitCardsApi.getAll().then(setDebitCards)
+        ]);
+      } catch (err) {
+        alert('Error al eliminar la transferencia: ' + err.message);
       }
     }
   };
@@ -317,6 +400,10 @@ export default function Transactions() {
           <button className="btn btn-secondary" onClick={() => setShowFilters(!showFilters)}>
             <Filter size={20} />
             Filtros
+          </button>
+          <button className="btn btn-secondary" onClick={handleOpenTransferModal}>
+            <ArrowLeftRight size={20} />
+            Transferencia
           </button>
           <button className="btn btn-primary" onClick={handleAddTransaction}>
             <Plus size={20} />
@@ -492,6 +579,188 @@ export default function Transactions() {
           </table>
         </div>
       </div>
+
+      {/* Transfers Table */}
+      {transfers.length > 0 && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <h3 style={{ margin: '0 0 1rem 0' }}>
+            <ArrowLeftRight size={18} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
+            Transferencias entre cuentas
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--primary)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.75rem' }}>Fecha</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem' }}>Desde</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem' }}>Hacia</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem' }}>Descripción</th>
+                  <th style={{ textAlign: 'right', padding: '0.75rem' }}>Monto</th>
+                  <th style={{ textAlign: 'center', padding: '0.75rem' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transfers.map(t => (
+                  <tr key={t.id} style={{ borderBottom: '1px solid #e0e0e0' }}>
+                    <td style={{ padding: '0.75rem' }}>{formatLocalDate(t.date)}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      {t.from_type === 'cash' ? 'Efectivo' : (t.from_debit_card_name || 'Débito')}
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>{t.to_debit_card_name || '—'}</td>
+                    <td style={{ padding: '0.75rem', color: '#666' }}>{t.description || '—'}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                      {currencySymbol(t.currency)} {parseFloat(t.amount).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                      <button
+                        className="btn-icon"
+                        title="Eliminar"
+                        onClick={() => handleDeleteTransfer(t)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Transfer */}
+      {showTransferModal && (
+        <div
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          }}
+          onClick={() => setShowTransferModal(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0 }}>Nueva transferencia</h2>
+              <button onClick={() => setShowTransferModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fecha *</label>
+                  <input
+                    type="date"
+                    value={transferForm.date}
+                    onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Monto *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={transferForm.amount}
+                    onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                    placeholder="0.00"
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Moneda *</label>
+                <select
+                  value={transferForm.currency}
+                  onChange={(e) => setTransferForm({ ...transferForm, currency: e.target.value })}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                >
+                  <option value="PEN">S/ Soles (PEN)</option>
+                  <option value="USD">$ Dólares (USD)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Origen *</label>
+                <select
+                  value={transferForm.from_type}
+                  onChange={(e) => setTransferForm({ ...transferForm, from_type: e.target.value, from_debit_card_id: '' })}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                >
+                  <option value="cash">Efectivo</option>
+                  <option value="debit">Tarjeta de débito</option>
+                </select>
+              </div>
+
+              {transferForm.from_type === 'debit' && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuenta origen *</label>
+                  <select
+                    value={transferForm.from_debit_card_id}
+                    onChange={(e) => setTransferForm({ ...transferForm, from_debit_card_id: e.target.value })}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                  >
+                    <option value="">Seleccionar cuenta</option>
+                    {debitCards
+                      .filter(c => c.id !== transferForm.to_debit_card_id)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuenta destino *</label>
+                <select
+                  value={transferForm.to_debit_card_id}
+                  onChange={(e) => setTransferForm({ ...transferForm, to_debit_card_id: e.target.value })}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                >
+                  <option value="">Seleccionar cuenta</option>
+                  {debitCards
+                    .filter(c => c.id !== transferForm.from_debit_card_id)
+                    .map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Descripción</label>
+                <input
+                  type="text"
+                  value={transferForm.description}
+                  onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
+                  placeholder="Notas opcionales"
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <button className="btn btn-primary" onClick={handleSaveTransfer} style={{ flex: 1 }}>
+                  <Save size={16} />
+                  Guardar
+                </button>
+                <button className="btn" onClick={() => setShowTransferModal(false)} style={{ flex: 1 }}>
+                  <X size={16} />
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal for Add/Edit Transaction */}
       {showModal && (

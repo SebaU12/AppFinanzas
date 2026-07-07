@@ -211,6 +211,16 @@ export const csvApi = {
   validate: (file) => api.uploadFile('/csv/validate', file),
 };
 
+export const transfersApi = {
+  getAll: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return api.get(`/transfers${query ? `?${query}` : ''}`);
+  },
+  getByMonth: (month) => api.get(`/transfers/month/${month}`),
+  create: (data) => api.post('/transfers', data),
+  delete: (id) => api.delete(`/transfers/${id}`),
+};
+
 export const exchangeRatesApi = {
   getAll: (month = null) => api.get(`/exchange-rates${month ? `?month=${month}` : ''}`),
   getByMonth: (month) => api.get(`/exchange-rates/month/${month}`),

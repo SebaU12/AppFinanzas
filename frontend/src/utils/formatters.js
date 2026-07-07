@@ -34,7 +34,7 @@ export function formatDate(date, options = {}) {
     day: 'numeric',
   };
 
-  return new Intl.DateTimeFormat('en-US', { ...defaultOptions, ...options }).format(dateObj);
+  return new Intl.DateTimeFormat('es-PE', { ...defaultOptions, ...options }).format(dateObj);
 }
 
 /**
@@ -140,18 +140,8 @@ export function formatDDMMYYYY(date) {
  * @param {string} locale - Locale for formatting (default: 'en-US')
  * @returns {string} Formatted date string
  */
-export function formatLocalDate(dateString, locale = 'en-US') {
+export function formatLocalDate(dateString) {
   if (!dateString) return '';
-
-  // Parse the date string manually to avoid timezone issues
   const [year, month, day] = dateString.split('-').map(Number);
-
-  // Create a date object in local timezone (not UTC)
-  const date = new Date(year, month - 1, day);
-
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
 }

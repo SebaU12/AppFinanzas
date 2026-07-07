@@ -169,7 +169,7 @@ export default function Simulation() {
                       {purchase.currency === 'USD' ? '$' : 'S/'} {purchase.monthlyAmount.toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      {new Date(purchase.startMonth + '-01').toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+                      {new Date(purchase.startMonth + '-01').toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <button

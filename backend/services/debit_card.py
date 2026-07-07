@@ -86,8 +86,11 @@ class DebitCardService:
                 + income_transactions (payment_method=DEBIT, debit_card_id=card_id)
                 - expense_transactions (payment_method=DEBIT, debit_card_id=card_id)
                 - credit_card_payments (installments paid using this debit card)
+                + incoming_transfers (to_debit_card_id=card_id)
+                - outgoing_transfers (from_debit_card_id=card_id)
         """
         from models.card_installment import CardInstallment
+        from models.transfer import Transfer, TransferSourceType
 
         card = DebitCardService.get_by_id(db, card_id)
 
@@ -107,7 +110,7 @@ class DebitCardService:
             elif transaction.category.type == 'expense':
                 balance -= float(transaction.amount)
 
-        # Subtract credit card payments made from this debit card (transfers, not expenses)
+        # Subtract credit card payments made from this debit card
         credit_payments = db.query(CardInstallment).filter(
             CardInstallment.paid_with_debit_card_id == card_id,
             CardInstallment.paid == True
@@ -115,6 +118,19 @@ class DebitCardService:
 
         for payment in credit_payments:
             balance -= float(payment.amount)
+
+        # Add incoming transfers (money arriving to this card)
+        incoming = db.query(Transfer).filter(Transfer.to_debit_card_id == card_id).all()
+        for t in incoming:
+            balance += float(t.amount)
+
+        # Subtract outgoing transfers (money leaving this card)
+        outgoing = db.query(Transfer).filter(
+            Transfer.from_debit_card_id == card_id,
+            Transfer.from_type == TransferSourceType.DEBIT
+        ).all()
+        for t in outgoing:
+            balance -= float(t.amount)
 
         return Decimal(str(balance)).quantize(Decimal('0.01'))
 
