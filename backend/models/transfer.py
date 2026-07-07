@@ -26,7 +26,7 @@ class Transfer(Base):
     date = Column(Date, nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(SQLEnum(Currency), nullable=False, server_default="PEN")
-    from_type = Column(SQLEnum(TransferSourceType), nullable=False)
+    from_type = Column(SQLEnum(TransferSourceType, values_callable=lambda obj: [e.value for e in obj], create_type=False), nullable=False)
     from_debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=True)
     to_debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=False)
     description = Column(String, nullable=True)

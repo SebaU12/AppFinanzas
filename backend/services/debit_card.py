@@ -125,9 +125,10 @@ class DebitCardService:
             balance += float(t.amount)
 
         # Subtract outgoing transfers (money leaving this card)
+        from sqlalchemy import text as sa_text
         outgoing = db.query(Transfer).filter(
             Transfer.from_debit_card_id == card_id,
-            Transfer.from_type == 'debit'
+            sa_text("transfers.from_type = 'debit'")
         ).all()
         for t in outgoing:
             balance -= float(t.amount)
