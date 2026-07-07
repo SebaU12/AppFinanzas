@@ -63,7 +63,7 @@ class TransactionService:
             # - Purchase on/after closing_day → charged two months out (cycle already closed)
             card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
             closing_day = card.closing_day if card else 1
-            if transaction.date.day <= closing_day:
+            if transaction.date.day < closing_day:
                 first_installment = transaction.date + relativedelta(months=1)
             else:
                 first_installment = transaction.date + relativedelta(months=2)
