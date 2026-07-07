@@ -29,6 +29,7 @@ export default function Reimbursements() {
           participantId: detail.participant_id,
           participantName: detail.participant?.name || 'Desconocido',
           amountPaid: parseFloat(detail.amount_paid || 0),
+          amountReceived: parseFloat(detail.amount_received || 0),
           expectedShare: parseFloat(detail.expected_share || 0),
           balance: parseFloat(detail.balance || 0),
           percentage: parseFloat(detail.percentage || 0)
@@ -37,6 +38,7 @@ export default function Reimbursements() {
         // Build summary
         setSummary({
           totalSharedExpenses: parseFloat(data.total_shared_expenses || 0),
+          totalSharedIncome: parseFloat(data.total_shared_income || 0),
           participants: participantDetails,
           status: data.finalized ? 'completed' : 'pending',
           reimbursementId: data.id
@@ -178,17 +180,26 @@ export default function Reimbursements() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
             <div>
-              <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>Total de gastos compartidos</p>
+              <p style={{ opacity: 0.9, marginBottom: '0.25rem' }}>Gastos compartidos brutos</p>
               <h3 style={{ margin: 0 }}>S/ {summary.totalSharedExpenses.toLocaleString()}</h3>
+              {summary.totalSharedIncome > 0 && (
+                <>
+                  <p style={{ opacity: 0.9, marginTop: '0.75rem', marginBottom: '0.25rem' }}>Ingresos compartidos</p>
+                  <h3 style={{ margin: 0 }}>- S/ {summary.totalSharedIncome.toLocaleString()}</h3>
+                  <p style={{ opacity: 0.9, marginTop: '0.75rem', marginBottom: '0.25rem' }}>Gasto neto compartido</p>
+                  <h3 style={{ margin: 0 }}>S/ {(summary.totalSharedExpenses - summary.totalSharedIncome).toLocaleString()}</h3>
+                </>
+              )}
             </div>
             {summary.participants.map(p => (
               <div key={p.participantId}>
-                <p style={{ opacity: 0.9, marginBottom: '0.5rem' }}>
+                <p style={{ opacity: 0.9, marginBottom: '0.25rem' }}>
                   Cuota esperada de {p.participantName} ({p.percentage}%)
                 </p>
                 <h3 style={{ margin: 0 }}>S/ {p.expectedShare.toLocaleString()}</h3>
                 <p style={{ opacity: 0.8, marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                  Pagado: S/ {p.amountPaid.toLocaleString()}
+                  Pagó: S/ {p.amountPaid.toLocaleString()}
+                  {p.amountReceived > 0 && ` • Recibió: S/ ${p.amountReceived.toLocaleString()}`}
                   {' • '}
                   Saldo: {p.balance >= 0 ? '+' : ''}S/ {p.balance.toLocaleString()}
                 </p>
@@ -237,7 +248,9 @@ export default function Reimbursements() {
                 <tr style={{ borderBottom: '2px solid var(--primary)' }}>
                   <th style={{ textAlign: 'left', padding: '1rem' }}>Participante</th>
                   <th style={{ textAlign: 'right', padding: '1rem' }}>Porcentaje</th>
-                  <th style={{ textAlign: 'right', padding: '1rem' }}>Monto pagado</th>
+                  <th style={{ textAlign: 'right', padding: '1rem' }}>Gastos pagados</th>
+                  <th style={{ textAlign: 'right', padding: '1rem' }}>Ingresos recibidos</th>
+                  <th style={{ textAlign: 'right', padding: '1rem' }}>Neto</th>
                   <th style={{ textAlign: 'right', padding: '1rem' }}>Cuota esperada</th>
                   <th style={{ textAlign: 'right', padding: '1rem' }}>Saldo</th>
                   <th style={{ textAlign: 'center', padding: '1rem' }}>Estado</th>
@@ -252,6 +265,12 @@ export default function Reimbursements() {
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
                       S/ {detail.amountPaid.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'right', color: detail.amountReceived > 0 ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                      {detail.amountReceived > 0 ? `S/ ${detail.amountReceived.toLocaleString()}` : '—'}
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>
+                      S/ {(detail.amountPaid - detail.amountReceived).toLocaleString()}
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                       S/ {detail.expectedShare.toLocaleString()}

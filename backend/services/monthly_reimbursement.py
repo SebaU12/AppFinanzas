@@ -62,17 +62,24 @@ class MonthlyReimbursementService:
             )
 
         # Get all expense transactions for the month, excluding personal categories
-        transactions = db.query(Transaction).join(Category).filter(
+        expense_transactions = db.query(Transaction).join(Category).filter(
             extract('year', Transaction.date) == year,
             extract('month', Transaction.date) == month_num,
             Category.is_personal == False,
-            Category.type == CategoryType.EXPENSE  # Only expenses, not income
+            Category.type == CategoryType.EXPENSE
         ).all()
 
-        # Calculate each participant's contribution (all amounts converted to PEN)
-        participant_payments = {p.id: Decimal('0') for p in participants}
+        # Get all income transactions for the month, excluding personal categories
+        income_transactions = db.query(Transaction).join(Category).filter(
+            extract('year', Transaction.date) == year,
+            extract('month', Transaction.date) == month_num,
+            Category.is_personal == False,
+            Category.type == CategoryType.INCOME
+        ).all()
 
-        for transaction in transactions:
+        # Calculate each participant's gross expenses (all amounts converted to PEN)
+        participant_payments = {p.id: Decimal('0') for p in participants}
+        for transaction in expense_transactions:
             amount_pen = ExchangeRateService.convert_to_pen(
                 db,
                 Decimal(str(transaction.amount)),
@@ -81,19 +88,35 @@ class MonthlyReimbursementService:
             )
             participant_payments[transaction.participant_id] += amount_pen
 
-        # Calculate totals
-        total_shared = sum(participant_payments.values())
+        # Calculate each participant's shared income (all amounts converted to PEN)
+        participant_income = {p.id: Decimal('0') for p in participants}
+        for transaction in income_transactions:
+            amount_pen = ExchangeRateService.convert_to_pen(
+                db,
+                Decimal(str(transaction.amount)),
+                transaction.currency,
+                month,
+            )
+            participant_income[transaction.participant_id] += amount_pen
 
-        # Calculate expected shares and balances
+        # Calculate totals
+        total_shared_expenses = sum(participant_payments.values())
+        total_shared_income = sum(participant_income.values())
+        total_shared_net = total_shared_expenses - total_shared_income
+
+        # Calculate expected shares and balances using net amounts
         details_data = []
         for participant in participants:
             amount_paid = participant_payments[participant.id]
-            expected_share = (total_shared * Decimal(str(participant.default_percentage))) / Decimal('100')
-            balance = amount_paid - expected_share
+            amount_received = participant_income[participant.id]
+            net_paid = amount_paid - amount_received
+            expected_share = (total_shared_net * Decimal(str(participant.default_percentage))) / Decimal('100')
+            balance = net_paid - expected_share
 
             details_data.append({
                 'participant_id': participant.id,
                 'amount_paid': amount_paid,
+                'amount_received': amount_received,
                 'expected_share': expected_share,
                 'balance': balance,
                 'percentage': Decimal(str(participant.default_percentage))
@@ -102,7 +125,8 @@ class MonthlyReimbursementService:
         # Create or update reimbursement
         if existing:
             reimbursement = existing
-            reimbursement.total_shared_expenses = total_shared
+            reimbursement.total_shared_expenses = total_shared_expenses
+            reimbursement.total_shared_income = total_shared_income
             # Delete old details
             db.query(ReimbursementDetail).filter(
                 ReimbursementDetail.reimbursement_id == reimbursement.id
@@ -110,7 +134,8 @@ class MonthlyReimbursementService:
         else:
             reimbursement = MonthlyReimbursement(
                 month=month,
-                total_shared_expenses=total_shared,
+                total_shared_expenses=total_shared_expenses,
+                total_shared_income=total_shared_income,
                 finalized=False
             )
             db.add(reimbursement)

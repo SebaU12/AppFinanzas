@@ -28,9 +28,10 @@ class ReimbursementDetail(Base):
     participant_id = Column(UUID(as_uuid=True), ForeignKey("participants.id"), nullable=False)
 
     # Financial details
-    amount_paid = Column(Numeric(10, 2), nullable=False)  # What they actually paid
+    amount_paid = Column(Numeric(10, 2), nullable=False)   # Gross expenses paid
+    amount_received = Column(Numeric(10, 2), nullable=False, default=0)  # Shared income received (e.g. friends paying back)
     expected_share = Column(Numeric(10, 2), nullable=False)  # What they should pay (based on percentage)
-    balance = Column(Numeric(10, 2), nullable=False)  # amount_paid - expected_share
+    balance = Column(Numeric(10, 2), nullable=False)  # (amount_paid - amount_received) - expected_share
     percentage = Column(Numeric(5, 2), nullable=False)  # Their percentage for this month
 
     # Relationships

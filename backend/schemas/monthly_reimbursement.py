@@ -16,6 +16,7 @@ class ReimbursementDetailResponse(BaseModel):
     id: UUID
     participant_id: UUID
     amount_paid: Decimal
+    amount_received: Decimal = Decimal('0')
     expected_share: Decimal
     balance: Decimal
     percentage: Decimal
