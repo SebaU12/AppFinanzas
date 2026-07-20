@@ -2,8 +2,9 @@
 Transfer model - Records movements between accounts (not income/expense).
 
 A transfer moves money between:
-  - Cash → debit card
-  - Debit card → debit card
+  - Cash -> debit card / savings account
+  - Debit card -> debit card / savings account
+  - Savings account -> debit card / savings account
 """
 import uuid
 import enum
@@ -17,6 +18,12 @@ from models.transaction import Currency
 class TransferSourceType(str, enum.Enum):
     CASH = "cash"
     DEBIT = "debit"
+    SAVINGS = "savings"
+
+
+class TransferDestinationType(str, enum.Enum):
+    DEBIT = "debit"
+    SAVINGS = "savings"
 
 
 class Transfer(Base):
@@ -27,9 +34,14 @@ class Transfer(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(SQLEnum(Currency), nullable=False, server_default="PEN")
     from_type = Column(SQLEnum(TransferSourceType, values_callable=lambda obj: [e.value for e in obj], create_type=False), nullable=False)
+    to_type = Column(SQLEnum(TransferDestinationType, values_callable=lambda obj: [e.value for e in obj], create_type=False), nullable=False)
     from_debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=True)
-    to_debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=False)
+    from_savings_card_id = Column(UUID(as_uuid=True), ForeignKey("savings_cards.id"), nullable=True)
+    to_debit_card_id = Column(UUID(as_uuid=True), ForeignKey("debit_cards.id"), nullable=True)
+    to_savings_card_id = Column(UUID(as_uuid=True), ForeignKey("savings_cards.id"), nullable=True)
     description = Column(String, nullable=True)
 
     from_debit_card = relationship("DebitCard", foreign_keys=[from_debit_card_id])
+    from_savings_card = relationship("SavingsCard", foreign_keys=[from_savings_card_id])
     to_debit_card = relationship("DebitCard", foreign_keys=[to_debit_card_id])
+    to_savings_card = relationship("SavingsCard", foreign_keys=[to_savings_card_id])

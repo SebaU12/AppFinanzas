@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Download, X, Save, ArrowLeftRight } from 'lucide-react';
-import { transactionsApi, participantsApi, categoriesApi, creditCardsApi, debitCardsApi, transfersApi } from '../services/api';
+import { transactionsApi, participantsApi, categoriesApi, creditCardsApi, debitCardsApi, savingsCardsApi, transfersApi } from '../services/api';
 import { getCurrentMonth, formatLocalDate, currencySymbol } from '../utils/formatters';
 
 export default function Transactions() {
@@ -9,6 +9,7 @@ export default function Transactions() {
   const [categories, setCategories] = useState([]);
   const [creditCards, setCreditCards] = useState([]);
   const [debitCards, setDebitCards] = useState([]);
+  const [savingsCards, setSavingsCards] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
     type: 'all',
@@ -27,8 +28,11 @@ export default function Transactions() {
     amount: '',
     currency: 'PEN',
     from_type: 'cash',
+    to_type: 'debit',
     from_debit_card_id: '',
+    from_savings_card_id: '',
     to_debit_card_id: '',
+    to_savings_card_id: '',
     description: ''
   });
   const [loading, setLoading] = useState(true);
@@ -61,20 +65,44 @@ export default function Transactions() {
 
   const fetchFormData = async () => {
     try {
-      const [participantsData, categoriesData, creditCardsData, debitCardsData] = await Promise.all([
+      const [participantsData, categoriesData, creditCardsData, debitCardsData, savingsCardsData] = await Promise.all([
         participantsApi.getAll(),
         categoriesApi.getAll(),
         creditCardsApi.getAll(),
-        debitCardsApi.getAll()
+        debitCardsApi.getAll(),
+        savingsCardsApi.getAll()
       ]);
       setParticipants(participantsData);
       setCategories(categoriesData);
       setCreditCards(creditCardsData);
       setDebitCards(debitCardsData);
+      setSavingsCards(savingsCardsData);
     } catch (err) {
       console.error('Error fetching form data:', err);
     }
   };
+
+  const debitTransferOptions = debitCards.map(card => ({
+    id: card.id,
+    type: 'debit',
+    label: `${card.name}${card.participant ? ` (${card.participant.name})` : ''} - ${currencySymbol(card.currency)}${parseFloat(card.current_balance || 0).toLocaleString()}`
+  }));
+
+  const savingsTransferOptions = savingsCards.map(card => ({
+    id: card.id,
+    type: 'savings',
+    label: `${card.name}${card.participant ? ` (${card.participant.name})` : ''} - Cuenta de ahorro`
+  }));
+
+  const sourceAccountOptions = transferForm.from_type === 'debit'
+    ? debitTransferOptions
+    : transferForm.from_type === 'savings'
+      ? savingsTransferOptions
+      : [];
+
+  const destinationAccountOptions = transferForm.to_type === 'debit'
+    ? debitTransferOptions
+    : savingsTransferOptions;
 
   const fetchTransfers = async (dateFrom = '', dateTo = '') => {
     try {
@@ -245,8 +273,11 @@ export default function Transactions() {
       amount: '',
       currency: 'PEN',
       from_type: 'cash',
+      to_type: 'debit',
       from_debit_card_id: '',
+      from_savings_card_id: '',
       to_debit_card_id: '',
+      to_savings_card_id: '',
       description: ''
     });
     setShowTransferModal(true);
@@ -259,17 +290,25 @@ export default function Transactions() {
         amount: parseFloat(transferForm.amount),
         currency: transferForm.currency,
         from_type: transferForm.from_type,
-        to_debit_card_id: transferForm.to_debit_card_id,
+        to_type: transferForm.to_type,
         description: transferForm.description || null
       };
       if (transferForm.from_type === 'debit') {
         payload.from_debit_card_id = transferForm.from_debit_card_id;
+      } else if (transferForm.from_type === 'savings') {
+        payload.from_savings_card_id = transferForm.from_savings_card_id;
+      }
+      if (transferForm.to_type === 'debit') {
+        payload.to_debit_card_id = transferForm.to_debit_card_id;
+      } else {
+        payload.to_savings_card_id = transferForm.to_savings_card_id;
       }
       await transfersApi.create(payload);
       setShowTransferModal(false);
       await Promise.all([
         fetchTransfers(filters.dateFrom, filters.dateTo),
-        debitCardsApi.getAll().then(setDebitCards)
+        debitCardsApi.getAll().then(setDebitCards),
+        savingsCardsApi.getAll().then(setSavingsCards)
       ]);
     } catch (err) {
       alert('Error al guardar la transferencia: ' + err.message);
@@ -282,7 +321,8 @@ export default function Transactions() {
         await transfersApi.delete(transfer.id);
         await Promise.all([
           fetchTransfers(filters.dateFrom, filters.dateTo),
-          debitCardsApi.getAll().then(setDebitCards)
+          debitCardsApi.getAll().then(setDebitCards),
+          savingsCardsApi.getAll().then(setSavingsCards)
         ]);
       } catch (err) {
         alert('Error al eliminar la transferencia: ' + err.message);
@@ -604,9 +644,9 @@ export default function Transactions() {
                   <tr key={t.id} style={{ borderBottom: '1px solid #e0e0e0' }}>
                     <td style={{ padding: '0.75rem' }}>{formatLocalDate(t.date)}</td>
                     <td style={{ padding: '0.75rem' }}>
-                      {t.from_type === 'cash' ? 'Efectivo' : (t.from_debit_card_name || 'Débito')}
+                      {t.from_type === 'cash' ? 'Efectivo' : (t.from_account_name || 'Cuenta origen')}
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{t.to_debit_card_name || '—'}</td>
+                    <td style={{ padding: '0.75rem' }}>{t.to_account_name || '—'}</td>
                     <td style={{ padding: '0.75rem', color: '#666' }}>{t.description || '—'}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>
                       {currencySymbol(t.currency)} {parseFloat(t.amount).toLocaleString()}
@@ -690,28 +730,38 @@ export default function Transactions() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Origen *</label>
                 <select
                   value={transferForm.from_type}
-                  onChange={(e) => setTransferForm({ ...transferForm, from_type: e.target.value, from_debit_card_id: '' })}
+                  onChange={(e) => setTransferForm({
+                    ...transferForm,
+                    from_type: e.target.value,
+                    from_debit_card_id: '',
+                    from_savings_card_id: ''
+                  })}
                   style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
                 >
                   <option value="cash">Efectivo</option>
                   <option value="debit">Tarjeta de débito</option>
+                  <option value="savings">Cuenta de ahorro</option>
                 </select>
               </div>
 
-              {transferForm.from_type === 'debit' && (
+              {transferForm.from_type !== 'cash' && (
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuenta origen *</label>
                   <select
-                    value={transferForm.from_debit_card_id}
-                    onChange={(e) => setTransferForm({ ...transferForm, from_debit_card_id: e.target.value })}
+                    value={transferForm.from_type === 'debit' ? transferForm.from_debit_card_id : transferForm.from_savings_card_id}
+                    onChange={(e) => setTransferForm({
+                      ...transferForm,
+                      from_debit_card_id: transferForm.from_type === 'debit' ? e.target.value : '',
+                      from_savings_card_id: transferForm.from_type === 'savings' ? e.target.value : ''
+                    })}
                     style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
                   >
                     <option value="">Seleccionar cuenta</option>
-                    {debitCards
-                      .filter(c => c.id !== transferForm.to_debit_card_id)
-                      .map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}{c.participant ? ` (${c.participant.name})` : ''} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                    {sourceAccountOptions
+                      .filter(option => !(option.type === transferForm.to_type && option.id === (transferForm.to_type === 'debit' ? transferForm.to_debit_card_id : transferForm.to_savings_card_id)))
+                      .map(option => (
+                        <option key={`${option.type}-${option.id}`} value={option.id}>
+                          {option.label}
                         </option>
                       ))}
                   </select>
@@ -719,18 +769,43 @@ export default function Transactions() {
               )}
 
               <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Tipo de destino *</label>
+                <select
+                  value={transferForm.to_type}
+                  onChange={(e) => setTransferForm({
+                    ...transferForm,
+                    to_type: e.target.value,
+                    to_debit_card_id: '',
+                    to_savings_card_id: ''
+                  })}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
+                >
+                  <option value="debit">Tarjeta de débito</option>
+                  <option value="savings">Cuenta de ahorro</option>
+                </select>
+              </div>
+
+              <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Cuenta destino *</label>
                 <select
-                  value={transferForm.to_debit_card_id}
-                  onChange={(e) => setTransferForm({ ...transferForm, to_debit_card_id: e.target.value })}
+                  value={transferForm.to_type === 'debit' ? transferForm.to_debit_card_id : transferForm.to_savings_card_id}
+                  onChange={(e) => setTransferForm({
+                    ...transferForm,
+                    to_debit_card_id: transferForm.to_type === 'debit' ? e.target.value : '',
+                    to_savings_card_id: transferForm.to_type === 'savings' ? e.target.value : ''
+                  })}
                   style={{ width: '100%', padding: '0.75rem', border: '1px solid #ddd', borderRadius: '0.5rem', fontSize: '1rem' }}
                 >
                   <option value="">Seleccionar cuenta</option>
-                  {debitCards
-                    .filter(c => c.id !== transferForm.from_debit_card_id)
-                    .map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}{c.participant ? ` (${c.participant.name})` : ''} — {currencySymbol(c.currency)}{parseFloat(c.current_balance || 0).toLocaleString()}
+                  {destinationAccountOptions
+                    .filter(option => {
+                      if (transferForm.from_type === 'cash') return true;
+                      const sourceId = transferForm.from_type === 'debit' ? transferForm.from_debit_card_id : transferForm.from_savings_card_id;
+                      return !(option.type === transferForm.from_type && option.id === sourceId);
+                    })
+                    .map(option => (
+                      <option key={`${option.type}-${option.id}`} value={option.id}>
+                        {option.label}
                       </option>
                     ))}
                 </select>
@@ -1187,4 +1262,3 @@ export default function Transactions() {
     </div>
   );
 }
-

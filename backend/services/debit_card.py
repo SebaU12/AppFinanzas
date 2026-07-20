@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 
 from models.category import CategoryType
 from models.debit_card import DebitCard
+from models.transfer import TransferSourceType
 from models.transaction import Transaction, PaymentMethod
 from schemas.debit_card import DebitCardCreate, DebitCardUpdate
 
@@ -143,6 +144,7 @@ class DebitCardService:
             balance += Decimal(str(t.amount))
 
         outgoing = db.query(Transfer).filter(
+            Transfer.from_type == TransferSourceType.DEBIT,
             Transfer.from_debit_card_id == card_id
         ).all()
         for t in outgoing:

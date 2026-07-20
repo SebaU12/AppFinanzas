@@ -1,5 +1,6 @@
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from fastapi import HTTPException, status
 
 from models.savings_card import SavingsCard
@@ -51,6 +52,25 @@ class SavingsCardService:
 
     @staticmethod
     def delete(db: Session, card_id: UUID) -> None:
+        from models.transfer import Transfer
+
         card = SavingsCardService.get_by_id(db, card_id)
+
+        transfer_count = db.query(Transfer).filter(
+            or_(
+                Transfer.from_savings_card_id == card_id,
+                Transfer.to_savings_card_id == card_id,
+            )
+        ).count()
+
+        if transfer_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Cannot delete savings card: it has {transfer_count} associated transfer(s). "
+                    "Delete or reassign those transfers first."
+                ),
+            )
+
         db.delete(card)
         db.commit()
