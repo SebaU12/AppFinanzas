@@ -18,7 +18,7 @@ depends_on = None
 def upgrade() -> None:
     # Create the currency enum type
     currency_enum = sa.Enum('PEN', 'USD', name='currency')
-    currency_enum.create(op.get_bind())
+    currency_enum.create(op.get_bind(), checkfirst=True)
 
     # Add currency column to transactions (default PEN for existing rows)
     op.add_column(
