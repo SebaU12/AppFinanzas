@@ -18,7 +18,6 @@ def upgrade() -> None:
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR NOT NULL,
             participant_id UUID NOT NULL REFERENCES participants(id) ON DELETE RESTRICT,
-            initial_balance NUMERIC(10, 2) NOT NULL DEFAULT 0,
             last_four_digits VARCHAR(4),
             active BOOLEAN NOT NULL DEFAULT TRUE,
             currency VARCHAR NOT NULL DEFAULT 'PEN'
