@@ -7,6 +7,7 @@ import Transactions from './pages/Transactions';
 import Reimbursements from './pages/Reimbursements';
 import CreditCards from './pages/CreditCards';
 import DebitCards from './pages/DebitCards';
+import SavingsCards from './pages/SavingsCards';
 import Simulation from './pages/Simulation';
 import Settings from './pages/Settings';
 import './index.css';
@@ -22,6 +23,7 @@ function App() {
           <Route path="reimbursements" element={<Reimbursements />} />
           <Route path="credit-cards" element={<CreditCards />} />
           <Route path="debit-cards" element={<DebitCards />} />
+          <Route path="savings-cards" element={<SavingsCards />} />
           <Route path="simulation" element={<Simulation />} />
           <Route path="settings" element={<Settings />} />
         </Route>

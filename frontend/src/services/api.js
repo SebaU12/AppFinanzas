@@ -157,6 +157,14 @@ export const debitCardsApi = {
   getBalance: (id) => api.get(`/debit-cards/${id}/balance`),
 };
 
+export const savingsCardsApi = {
+  getAll: (activeOnly = true) => api.get(`/savings-cards?active_only=${activeOnly}`),
+  getById: (id) => api.get(`/savings-cards/${id}`),
+  create: (data) => api.post('/savings-cards', data),
+  update: (id, data) => api.put(`/savings-cards/${id}`, data),
+  delete: (id) => api.delete(`/savings-cards/${id}`),
+};
+
 export const installmentsApi = {
   getAll: () => api.get('/installments'),
   getByMonth: (month) => api.get(`/installments/month/${month}`),
