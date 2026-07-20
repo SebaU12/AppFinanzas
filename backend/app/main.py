@@ -9,7 +9,7 @@ from routers import (
     transaction_router, credit_card_router, debit_card_router, installment_router,
     account_payable_router, account_receivable_router, reimbursement_router,
     expected_purchase_router, statements_router, csv_ingestion_router,
-    cash_flow_router, exchange_rate_router, transfer_router
+    cash_flow_router, exchange_rate_router, transfer_router, savings_card_router
 )
 
 app = FastAPI(
@@ -35,6 +35,7 @@ app.include_router(csv_ingestion_router)
 app.include_router(cash_flow_router)
 app.include_router(exchange_rate_router)
 app.include_router(transfer_router)
+app.include_router(savings_card_router)
 
 # CORS configuration
 app.add_middleware(

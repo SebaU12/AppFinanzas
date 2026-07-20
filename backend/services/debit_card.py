@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
+from models.category import CategoryType
 from models.debit_card import DebitCard
 from models.transaction import Transaction, PaymentMethod
 from schemas.debit_card import DebitCardCreate, DebitCardUpdate
@@ -70,7 +71,27 @@ class DebitCardService:
     @staticmethod
     def delete(db: Session, card_id: UUID) -> None:
         """Delete a debit card, unlinking any transactions that reference it"""
+        from models.transfer import Transfer
+        from sqlalchemy import or_
+
         card = DebitCardService.get_by_id(db, card_id)
+
+        transfer_count = db.query(Transfer).filter(
+            or_(
+                Transfer.from_debit_card_id == card_id,
+                Transfer.to_debit_card_id == card_id,
+            )
+        ).count()
+
+        if transfer_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Cannot delete debit card: it has {transfer_count} associated transfer(s). "
+                    "Delete or reassign those transfers first."
+                ),
+            )
+
         db.query(Transaction).filter(Transaction.debit_card_id == card_id).update(
             {Transaction.debit_card_id: None}, synchronize_session=False
         )
@@ -78,23 +99,22 @@ class DebitCardService:
         db.commit()
 
     @staticmethod
-    def get_current_balance(db: Session, card_id: UUID) -> Decimal:
+    def _calculate_balance(db: Session, card: DebitCard) -> Decimal:
         """
-        Calculate current balance of a debit card.
+        Calculate current balance given an already-loaded DebitCard object.
 
         Balance = initial_balance
-                + income_transactions (payment_method=DEBIT, debit_card_id=card_id)
-                - expense_transactions (payment_method=DEBIT, debit_card_id=card_id)
+                + income_transactions (payment_method=DEBIT, debit_card_id=card.id)
+                - expense_transactions (payment_method=DEBIT, debit_card_id=card.id)
                 - credit_card_payments (installments paid using this debit card)
-                + incoming_transfers (to_debit_card_id=card_id)
-                - outgoing_transfers (from_debit_card_id=card_id)
+                + incoming_transfers (to_debit_card_id=card.id)
+                - outgoing_transfers (from_debit_card_id=card.id)
         """
         from models.card_installment import CardInstallment
-        from models.transfer import Transfer, TransferSourceType
+        from models.transfer import Transfer
 
-        card = DebitCardService.get_by_id(db, card_id)
+        card_id = card.id
 
-        # Get all debit transactions for this card
         transactions = db.query(Transaction).filter(
             Transaction.debit_card_id == card_id,
             Transaction.payment_method == PaymentMethod.DEBIT
@@ -102,52 +122,48 @@ class DebitCardService:
             joinedload(Transaction.category)
         ).all()
 
-        balance = float(card.initial_balance)
+        balance = Decimal(str(card.initial_balance))
 
         for transaction in transactions:
-            if transaction.category.type == 'income':
-                balance += float(transaction.amount)
-            elif transaction.category.type == 'expense':
-                balance -= float(transaction.amount)
+            if transaction.category.type == CategoryType.INCOME:
+                balance += Decimal(str(transaction.amount))
+            elif transaction.category.type == CategoryType.EXPENSE:
+                balance -= Decimal(str(transaction.amount))
 
-        # Subtract credit card payments made from this debit card
         credit_payments = db.query(CardInstallment).filter(
             CardInstallment.paid_with_debit_card_id == card_id,
             CardInstallment.paid == True
         ).all()
 
         for payment in credit_payments:
-            balance -= float(payment.amount)
+            balance -= Decimal(str(payment.amount))
 
-        # Add incoming transfers (money arriving to this card)
         incoming = db.query(Transfer).filter(Transfer.to_debit_card_id == card_id).all()
         for t in incoming:
-            balance += float(t.amount)
+            balance += Decimal(str(t.amount))
 
-        # Subtract outgoing transfers (money leaving this card)
-        from sqlalchemy import text as sa_text
         outgoing = db.query(Transfer).filter(
-            Transfer.from_debit_card_id == card_id,
-            sa_text("transfers.from_type = 'debit'")
+            Transfer.from_debit_card_id == card_id
         ).all()
         for t in outgoing:
-            balance -= float(t.amount)
+            balance -= Decimal(str(t.amount))
 
-        return Decimal(str(balance)).quantize(Decimal('0.01'))
+        return balance.quantize(Decimal('0.01'))
 
     @staticmethod
-    def get_all_with_balances(db: Session, skip: int = 0, limit: int = 100) -> list[dict]:
-        """
-        Get all debit cards with their current balances calculated.
-        """
-        cards = DebitCardService.get_all(db, skip, limit)
+    def get_current_balance(db: Session, card_id: UUID) -> Decimal:
+        """Calculate current balance of a debit card by ID."""
+        card = DebitCardService.get_by_id(db, card_id)
+        return DebitCardService._calculate_balance(db, card)
 
-        result = []
-        for card in cards:
-            current_balance = DebitCardService.get_current_balance(db, card.id)
-            result.append({
-                "card": card,
-                "current_balance": current_balance
-            })
+    @staticmethod
+    def get_all_with_balances(
+        db: Session, skip: int = 0, limit: int = 100, active_only: bool = True
+    ) -> list[dict]:
+        """Get all debit cards with their current balances calculated."""
+        cards = DebitCardService.get_all(db, skip, limit, active_only)
 
-        return result
+        return [
+            {"card": card, "current_balance": DebitCardService._calculate_balance(db, card)}
+            for card in cards
+        ]

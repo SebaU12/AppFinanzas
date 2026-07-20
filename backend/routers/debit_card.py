@@ -37,7 +37,7 @@ def get_debit_cards(
     """
     Get all debit cards with calculated balances.
     """
-    cards_with_balances = DebitCardService.get_all_with_balances(db, skip, limit)
+    cards_with_balances = DebitCardService.get_all_with_balances(db, skip, limit, active_only)
 
     # Map to response schema with current_balance
     return [

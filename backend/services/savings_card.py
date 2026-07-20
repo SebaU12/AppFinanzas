@@ -1,0 +1,85 @@
+from uuid import UUID
+from decimal import Decimal
+from sqlalchemy.orm import Session, joinedload
+from fastapi import HTTPException, status
+
+from models.savings_card import SavingsCard
+from schemas.savings_card import SavingsCardCreate, SavingsCardUpdate
+
+
+class SavingsCardService:
+
+    @staticmethod
+    def create(db: Session, card_data: SavingsCardCreate) -> SavingsCard:
+        card = SavingsCard(**card_data.model_dump())
+        db.add(card)
+        db.commit()
+        db.refresh(card)
+        return card
+
+    @staticmethod
+    def get_by_id(db: Session, card_id: UUID) -> SavingsCard:
+        card = db.query(SavingsCard).options(
+            joinedload(SavingsCard.participant)
+        ).filter(SavingsCard.id == card_id).first()
+
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Savings card with id {card_id} not found"
+            )
+        return card
+
+    @staticmethod
+    def get_all(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        active_only: bool = True
+    ) -> list[SavingsCard]:
+        query = db.query(SavingsCard).options(joinedload(SavingsCard.participant))
+        if active_only:
+            query = query.filter(SavingsCard.active == True)
+        return query.offset(skip).limit(limit).all()
+
+    @staticmethod
+    def update(db: Session, card_id: UUID, card_data: SavingsCardUpdate) -> SavingsCard:
+        card = SavingsCardService.get_by_id(db, card_id)
+        for field, value in card_data.model_dump(exclude_unset=True).items():
+            setattr(card, field, value)
+        db.commit()
+        db.refresh(card)
+        return card
+
+    @staticmethod
+    def delete(db: Session, card_id: UUID) -> None:
+        card = SavingsCardService.get_by_id(db, card_id)
+        db.delete(card)
+        db.commit()
+
+    @staticmethod
+    def _calculate_balance(db: Session, card: SavingsCard) -> Decimal:
+        """
+        Balance = initial_balance
+                + incoming transfers (to_savings_card_id = card.id)
+                - outgoing transfers (from_savings_card_id = card.id)
+
+        Transfer support for savings cards requires migration 009.
+        Until then, balance equals initial_balance.
+        """
+        return Decimal(str(card.initial_balance)).quantize(Decimal('0.01'))
+
+    @staticmethod
+    def get_current_balance(db: Session, card_id: UUID) -> Decimal:
+        card = SavingsCardService.get_by_id(db, card_id)
+        return SavingsCardService._calculate_balance(db, card)
+
+    @staticmethod
+    def get_all_with_balances(
+        db: Session, skip: int = 0, limit: int = 100, active_only: bool = True
+    ) -> list[dict]:
+        cards = SavingsCardService.get_all(db, skip, limit, active_only)
+        return [
+            {"card": card, "current_balance": SavingsCardService._calculate_balance(db, card)}
+            for card in cards
+        ]

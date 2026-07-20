@@ -5,6 +5,7 @@ import { transactionsApi, reimbursementsApi, participantsApi, cashFlowApi, debit
 import { getCurrentMonth, formatCurrency } from '../utils/formatters';
 
 const COLORS = ['#569B85', '#FFC145', '#E78484', '#A7CDC1', '#FFE3A3'];
+const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -17,6 +18,8 @@ export default function Dashboard() {
   });
   const [monthlyData, setMonthlyData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
+  const [trendPeriod, setTrendPeriod] = useState('monthly');
+  const [trendData, setTrendData] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [selectedParticipant, setSelectedParticipant] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -31,6 +34,53 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [selectedParticipant, selectedMonth]);
+
+  useEffect(() => {
+    fetchTrendData();
+  }, [selectedParticipant, selectedMonth, trendPeriod]);
+
+  const fetchTrendData = async () => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+
+    let months = [];
+    if (trendPeriod === 'annual') {
+      for (let m = 1; m <= 12; m++) {
+        months.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+    } else if (trendPeriod === 'ytd') {
+      for (let m = 1; m <= month; m++) {
+        months.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+    } else {
+      months = [selectedMonth];
+    }
+
+    try {
+      const results = await Promise.all(
+        months.map(m => transactionsApi.getByMonth(m).catch(() => []))
+      );
+
+      const data = months.map((m, i) => {
+        const txs = selectedParticipant === 'all'
+          ? results[i]
+          : results[i].filter(t => t.participant?.name === selectedParticipant);
+
+        const mo = parseInt(m.split('-')[1], 10);
+        const income = txs
+          .filter(t => t.category?.type === 'income')
+          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const expenses = txs
+          .filter(t => t.category?.type === 'expense')
+          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+        return { month: MONTH_NAMES[mo - 1], income, expenses };
+      });
+
+      setTrendData(data);
+    } catch (err) {
+      console.error('Error fetching trend data:', err);
+    }
+  };
 
   const fetchParticipants = async () => {
     try {
@@ -388,15 +438,43 @@ export default function Dashboard() {
 
       {/* Trend Chart */}
       <div className="card">
-        <h3 style={{ marginBottom: '1rem' }}>Tendencia de gasto</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0 }}>Tendencia de gasto</h3>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {[
+              { key: 'monthly', label: 'Mensual' },
+              { key: 'ytd', label: 'YTD' },
+              { key: 'annual', label: 'Anual' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTrendPeriod(key)}
+                style={{
+                  padding: '0.35rem 0.9rem',
+                  borderRadius: '0.4rem',
+                  border: '1.5px solid var(--primary)',
+                  background: trendPeriod === key ? 'var(--primary)' : 'transparent',
+                  color: trendPeriod === key ? 'white' : 'var(--primary)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={monthlyData}>
+          <LineChart data={trendData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis />
-            <Tooltip />
+            <Tooltip formatter={(value) => `S/ ${value.toLocaleString()}`} />
             <Legend />
-            <Line type="monotone" dataKey="expenses" stroke="var(--accent)" strokeWidth={2} />
+            <Line type="monotone" dataKey="income" name="Ingresos" stroke="var(--primary)" strokeWidth={2} dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="expenses" name="Gastos" stroke="var(--accent)" strokeWidth={2} dot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
