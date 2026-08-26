@@ -228,6 +228,42 @@ def test_get_all_transactions(client, sample_category, sample_participant):
     assert data[0]["date"] == "2026-01-16"
 
 
+def test_get_all_transactions_excludes_credit_card_payment_category(client, sample_participant):
+    """Legacy credit card payment entries should not appear as regular transactions."""
+    payment_category = client.post(
+        "/categories/",
+        json={
+            "name": "Pago Tarjeta de Credito",
+            "type": "expense",
+            "is_personal": True,
+            "allows_credit": False,
+        }
+    ).json()
+
+    response = client.post(
+        "/transactions/",
+        json={
+            "date": "2026-01-30",
+            "amount": 33.80,
+            "category_id": payment_category["id"],
+            "participant_id": sample_participant["id"],
+            "payment_method": "cash",
+            "description": "Pago cuota 1 - Ramen bulldog"
+        }
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+
+    response = client.get("/transactions/")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == []
+
+    response = client.get("/transactions/summary")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["total_transactions"] == 0
+    assert data["total_amount"] == 0
+
+
 def test_filter_transactions_by_payment_method(client, sample_category, sample_participant):
     """Test filtering transactions by payment method"""
     client.post(

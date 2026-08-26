@@ -132,12 +132,9 @@ export default function CreditCards() {
 
   const fetchInstallments = async (cardId) => {
     try {
-      // Fetch ALL installments for the card, not just current month
-      const allInstallments = await installmentsApi.getAll();
+      const allInstallments = await installmentsApi.getAll({ credit_card_id: cardId });
 
-      // Filter installments for the selected card
       const cardInstallments = allInstallments
-        .filter(inst => inst.credit_card_id === cardId)
         .map(inst => {
           const transaction = inst.transaction || {};
           const totalInstallments = transaction.installment_count || 1;
@@ -514,13 +511,21 @@ export default function CreditCards() {
               return true;
             });
 
-            // Históricas: ordenar por fecha de pago al banco (más reciente primero, nulls al final)
             if (isHistorical) {
+              // Históricas: ordenar por fecha de pago al banco (más reciente primero, nulls al final)
               visibleInstallments = [...visibleInstallments].sort((a, b) => {
                 if (!a.paidDate && !b.paidDate) return 0;
                 if (!a.paidDate) return 1;
                 if (!b.paidDate) return -1;
                 return new Date(b.paidDate) - new Date(a.paidDate);
+              });
+            } else {
+              // Activas / todas: ordenar por fecha de compra (más reciente primero, nulls al final)
+              visibleInstallments = [...visibleInstallments].sort((a, b) => {
+                if (!a.purchaseDate && !b.purchaseDate) return 0;
+                if (!a.purchaseDate) return 1;
+                if (!b.purchaseDate) return -1;
+                return new Date(b.purchaseDate) - new Date(a.purchaseDate);
               });
             }
             const allSelected = visibleInstallments.length > 0 && visibleInstallments.every(i => selectedInstallments.has(i.id));

@@ -5,6 +5,7 @@ import pytest
 from decimal import Decimal
 from uuid import uuid4
 from datetime import datetime
+from models.transaction import Transaction
 
 
 def test_create_installment_manually(client, test_db):
@@ -406,6 +407,7 @@ def test_update_installment_mark_as_paid(client, test_db):
     response = client.put(f"/installments/{installment_id}", json={"paid": True})
     assert response.status_code == 200
     assert response.json()["paid"] is True
+    assert test_db.query(Transaction).count() == 1
 
 
 def test_update_installment_not_found(client, test_db):

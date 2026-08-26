@@ -145,7 +145,6 @@ export const creditCardsApi = {
   create: (data) => api.post('/credit-cards', data),
   update: (id, data) => api.put(`/credit-cards/${id}`, data),
   delete: (id) => api.delete(`/credit-cards/${id}`),
-  getInstallments: (cardId) => api.get(`/credit-cards/${cardId}/installments`),
 };
 
 export const debitCardsApi = {
@@ -166,7 +165,14 @@ export const savingsCardsApi = {
 };
 
 export const installmentsApi = {
-  getAll: () => api.get('/installments'),
+  getAll: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.credit_card_id) query.append('credit_card_id', params.credit_card_id);
+    if (params.month) query.append('month', params.month);
+    if (params.paid !== undefined) query.append('paid', params.paid);
+    const qs = query.toString();
+    return api.get(qs ? `/installments?${qs}` : '/installments');
+  },
   getByMonth: (month) => api.get(`/installments/month/${month}`),
   markPaid: (id, paid = true, debitCardId = null, paidDate = null) => {
     let url = `/installments/${id}/mark-paid?paid=${paid}`;

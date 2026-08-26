@@ -256,6 +256,52 @@ def test_cash_flow_excludes_credit_transactions(client, test_db):
     assert data["operating_activities"]["cash_outflows"] == 100.00
 
 
+def test_statements_exclude_legacy_credit_card_payment_transactions(client, test_db):
+    """Legacy payment transactions should not distort accrual or cash reports."""
+    participant = client.post("/participants/", json={"name": "Lu"}).json()
+    expense_cat = client.post("/categories/", json={
+        "name": "Cocina",
+        "type": "EXPENSE"
+    }).json()
+    payment_cat = client.post("/categories/", json={
+        "name": "Pago Tarjeta de Credito",
+        "type": "EXPENSE",
+        "is_personal": True,
+        "allows_credit": False
+    }).json()
+
+    client.post("/transactions/", json={
+        "description": "Ramen bulldog",
+        "amount": 33.80,
+        "date": "2026-07-01",
+        "category_id": expense_cat["id"],
+        "participant_id": participant["id"],
+        "payment_method": "CASH"
+    })
+    client.post("/transactions/", json={
+        "description": "Pago cuota 1 - Ramen bulldog",
+        "amount": 33.80,
+        "date": "2026-07-30",
+        "category_id": payment_cat["id"],
+        "participant_id": participant["id"],
+        "payment_method": "CASH"
+    })
+
+    income_statement = client.get(
+        "/statements/income-statement?start_date=2026-07-01&end_date=2026-07-31"
+    )
+    assert income_statement.status_code == 200
+    income_data = income_statement.json()
+    assert income_data["expenses"]["total"] == 33.80
+
+    cash_flow = client.get(
+        "/statements/cash-flow?start_date=2026-07-01&end_date=2026-07-31"
+    )
+    assert cash_flow.status_code == 200
+    cash_flow_data = cash_flow.json()
+    assert cash_flow_data["operating_activities"]["cash_outflows"] == 33.80
+
+
 def test_balance_sheet_basic(client, test_db):
     """Test generating basic balance sheet."""
     participant = client.post("/participants/", json={"name": "Lu"}).json()

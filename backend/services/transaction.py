@@ -18,6 +18,8 @@ from schemas.transaction import TransactionCreate, TransactionUpdate
 class TransactionService:
     """Service for managing Transaction operations"""
 
+    PAYMENT_CATEGORY_NAME = "Pago Tarjeta de Credito"
+
     @staticmethod
     def create(db: Session, transaction_data: TransactionCreate) -> Transaction:
         """Create a new transaction"""
@@ -119,6 +121,8 @@ class TransactionService:
         query = db.query(Transaction).options(
             joinedload(Transaction.category),
             joinedload(Transaction.participant)
+        ).join(Category).filter(
+            Category.name != TransactionService.PAYMENT_CATEGORY_NAME
         )
 
         if category_id:
@@ -160,8 +164,55 @@ class TransactionService:
                 )
 
         update_data = transaction_data.model_dump(exclude_unset=True)
+
+        reinstallment_fields = {'installment_count', 'amount', 'card_id', 'date'}
+        needs_reinstallment = (
+            transaction.payment_method == PaymentMethod.CREDIT
+            and bool(reinstallment_fields & update_data.keys())
+        )
+
+        paid_numbers: set[int] = set()
+        if needs_reinstallment:
+            paid_installments = db.query(CardInstallment).filter(
+                CardInstallment.transaction_id == transaction_id,
+                CardInstallment.paid == True
+            ).all()
+            paid_numbers = {inst.installment_number for inst in paid_installments}
+
+            db.query(CardInstallment).filter(
+                CardInstallment.transaction_id == transaction_id,
+                CardInstallment.paid == False
+            ).delete(synchronize_session=False)
+
         for field, value in update_data.items():
             setattr(transaction, field, value)
+
+        if needs_reinstallment and transaction.card_id:
+            total = transaction.installment_count or 1
+            amount_per = float(transaction.amount) / total
+
+            card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
+            closing_day = card.closing_day if card else 1
+
+            if transaction.date.day < closing_day:
+                first_installment = transaction.date + relativedelta(months=1)
+            else:
+                first_installment = transaction.date + relativedelta(months=2)
+            first_installment = first_installment.replace(day=1)
+
+            for i in range(total):
+                inst_num = i + 1
+                if inst_num in paid_numbers:
+                    continue
+                installment_month = first_installment + relativedelta(months=i)
+                db.add(CardInstallment(
+                    transaction_id=transaction.id,
+                    credit_card_id=transaction.card_id,
+                    installment_number=inst_num,
+                    month=installment_month.strftime("%Y-%m"),
+                    amount=amount_per,
+                    paid=False
+                ))
 
         db.commit()
         db.refresh(transaction)
@@ -177,7 +228,9 @@ class TransactionService:
     @staticmethod
     def get_summary_by_category(db: Session, start_date: date | None = None, end_date: date | None = None) -> dict:
         """Get transaction summary grouped by category"""
-        query = db.query(Transaction)
+        query = db.query(Transaction).join(Category).filter(
+            Category.name != TransactionService.PAYMENT_CATEGORY_NAME
+        )
 
         if start_date:
             query = query.filter(Transaction.date >= start_date)

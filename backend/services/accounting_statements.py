@@ -3,11 +3,12 @@ Business logic for generating accounting statements.
 
 Provides Income Statement, Cash Flow, and Balance Sheet reports.
 """
+import calendar
 from decimal import Decimal
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, or_, and_
 
 from models.transaction import Transaction, PaymentMethod
 from models.category import Category, CategoryType
@@ -20,6 +21,8 @@ from services.exchange_rate import ExchangeRateService
 
 class AccountingStatementsService:
     """Service for generating accounting statements"""
+
+    PAYMENT_CATEGORY_NAME = "Pago Tarjeta de Credito"
 
     @staticmethod
     def generate_income_statement(db: Session, start_date: str, end_date: str) -> dict:
@@ -42,7 +45,8 @@ class AccountingStatementsService:
         # Get all transactions in the period
         transactions = db.query(Transaction, Category).join(Category).filter(
             Transaction.date >= start,
-            Transaction.date <= end
+            Transaction.date <= end,
+            Category.name != AccountingStatementsService.PAYMENT_CATEGORY_NAME
         ).all()
 
         # Separate income and expenses by category
@@ -120,7 +124,8 @@ class AccountingStatementsService:
         cash_transactions = db.query(Transaction, Category).join(Category).filter(
             Transaction.date >= start,
             Transaction.date <= end,
-            Transaction.payment_method.in_([PaymentMethod.CASH, PaymentMethod.DEBIT])
+            Transaction.payment_method.in_([PaymentMethod.CASH, PaymentMethod.DEBIT]),
+            Category.name != AccountingStatementsService.PAYMENT_CATEGORY_NAME
         ).all()
 
         cash_inflows = Decimal('0')
@@ -138,15 +143,16 @@ class AccountingStatementsService:
 
         net_operating_cash_flow = cash_inflows - cash_outflows
 
-        # Financing Activities: Credit card installments paid in this period
-        # Installments with payment dates in the period
-        start_month = start.strftime('%Y-%m')
-        end_month = end.strftime('%Y-%m')
-
+        # Financing Activities: Credit card installments paid in this period.
+        # Use actual paid_date; fall back to billing month when paid_date is absent.
         paid_installments = db.query(CardInstallment).filter(
-            CardInstallment.month >= start_month,
-            CardInstallment.month <= end_month,
-            CardInstallment.paid == True
+            CardInstallment.paid == True,
+            or_(
+                and_(CardInstallment.paid_date >= start, CardInstallment.paid_date <= end),
+                and_(CardInstallment.paid_date == None,
+                     CardInstallment.month >= start.strftime('%Y-%m'),
+                     CardInstallment.month <= end.strftime('%Y-%m'))
+            )
         ).all()
 
         credit_payments = sum(Decimal(str(inst.amount)) for inst in paid_installments)
@@ -199,7 +205,8 @@ class AccountingStatementsService:
 
         # Get all transactions up to date for cash calculation
         all_transactions = db.query(Transaction, Category).join(Category).filter(
-            Transaction.date <= as_of
+            Transaction.date <= as_of,
+            Category.name != AccountingStatementsService.PAYMENT_CATEGORY_NAME
         ).all()
 
         # Calculate cumulative cash (income - expenses for cash/debit), all in PEN
@@ -231,8 +238,15 @@ class AccountingStatementsService:
         accounts_payable = db.query(AccountPayable).filter(
             AccountPayable.paid == False
         ).all()
-
         total_payables = sum(Decimal(str(ap.amount)) for ap in accounts_payable)
+
+        # Liabilities: Unpaid credit card installments
+        unpaid_installments = db.query(CardInstallment).filter(
+            CardInstallment.paid == False
+        ).all()
+        credit_card_debt = sum(Decimal(str(inst.amount)) for inst in unpaid_installments)
+
+        total_liabilities = total_payables + credit_card_debt
 
         # Equity: Retained Earnings (net income from inception)
         total_income = Decimal('0')
@@ -253,7 +267,7 @@ class AccountingStatementsService:
         total_equity = retained_earnings
 
         # Balance check
-        total_liabilities_and_equity = total_payables + total_equity
+        total_liabilities_and_equity = total_liabilities + total_equity
 
         return {
             "statement_type": "Balance Sheet",
@@ -269,9 +283,10 @@ class AccountingStatementsService:
             "liabilities": {
                 "current_liabilities": {
                     "accounts_payable": float(total_payables),
-                    "total_current_liabilities": float(total_payables)
+                    "credit_card_debt": float(credit_card_debt),
+                    "total_current_liabilities": float(total_liabilities)
                 },
-                "total_liabilities": float(total_payables)
+                "total_liabilities": float(total_liabilities)
             },
             "equity": {
                 "retained_earnings": float(retained_earnings),
@@ -311,7 +326,8 @@ class AccountingStatementsService:
             transactions = db.query(Transaction, Category).join(Category).filter(
                 Transaction.date >= start,
                 Transaction.date <= end,
-                Transaction.participant_id == participant.id
+                Transaction.participant_id == participant.id,
+                Category.name != AccountingStatementsService.PAYMENT_CATEGORY_NAME
             ).all()
 
             by_category = {}

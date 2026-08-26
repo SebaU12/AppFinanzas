@@ -40,6 +40,7 @@ def get_installments(
     skip: int = 0,
     limit: int = 100,
     transaction_id: UUID | None = Query(None, description="Filter by transaction ID"),
+    credit_card_id: UUID | None = Query(None, description="Filter by credit card ID"),
     month: str | None = Query(None, pattern=r"^\d{4}-\d{2}$", description="Filter by month (YYYY-MM)"),
     paid: bool | None = Query(None, description="Filter by paid status"),
     db: Session = Depends(get_db)
@@ -50,6 +51,7 @@ def get_installments(
     - **skip**: Number of records to skip (pagination)
     - **limit**: Maximum number of records to return
     - **transaction_id**: Filter by transaction
+    - **credit_card_id**: Filter by credit card
     - **month**: Filter by specific month
     - **paid**: Filter by paid/unpaid status
     """
@@ -58,6 +60,7 @@ def get_installments(
         skip=skip,
         limit=limit,
         transaction_id=transaction_id,
+        credit_card_id=credit_card_id,
         month=month,
         paid=paid
     )

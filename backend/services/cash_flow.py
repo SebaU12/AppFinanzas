@@ -9,14 +9,20 @@ For credit card transactions:
 - Accrual: The purchase date (when it was consumed)
 - Cash: The installment payment date (when cash leaves the account)
 """
+import calendar
+from datetime import date
 from decimal import Decimal
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session, joinedload
 from models.transaction import Transaction, PaymentMethod
 from models.card_installment import CardInstallment
+from models.category import Category
 
 
 class CashFlowService:
     """Service for calculating real cash flow position"""
+
+    PAYMENT_CATEGORY_NAME = "Pago Tarjeta de Credito"
 
     @staticmethod
     def calculate_monthly_cash_flow(db: Session, month: str) -> dict:
@@ -39,6 +45,8 @@ class CashFlowService:
         transactions = db.query(Transaction).filter(
             Transaction.date >= f"{month}-01",
             Transaction.date < _get_next_month(month)
+        ).join(Category).filter(
+            Category.name != CashFlowService.PAYMENT_CATEGORY_NAME
         ).options(
             joinedload(Transaction.category),
             joinedload(Transaction.participant)
@@ -68,10 +76,19 @@ class CashFlowService:
             if t.category.type == 'expense'
         )
 
-        # Get paid credit card installments for this month
+        # Get paid credit card installments for this month using actual payment date.
+        # Fallback to billing month when paid_date is not recorded.
+        year_num, month_num = map(int, month.split('-'))
+        last_day = calendar.monthrange(year_num, month_num)[1]
+        period_start = date(year_num, month_num, 1)
+        period_end = date(year_num, month_num, last_day)
+
         paid_installments = db.query(CardInstallment).filter(
-            CardInstallment.month == month,
-            CardInstallment.paid == True
+            CardInstallment.paid == True,
+            or_(
+                and_(CardInstallment.paid_date >= period_start, CardInstallment.paid_date <= period_end),
+                and_(CardInstallment.paid_date == None, CardInstallment.month == month)
+            )
         ).options(
             joinedload(CardInstallment.transaction).joinedload(Transaction.category),
             joinedload(CardInstallment.transaction).joinedload(Transaction.participant)
