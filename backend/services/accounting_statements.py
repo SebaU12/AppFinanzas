@@ -7,8 +7,8 @@ import calendar
 from decimal import Decimal
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from sqlalchemy.orm import Session
 from sqlalchemy import extract, func, or_, and_
+from sqlalchemy.orm import Session, or_, and_
 
 from models.transaction import Transaction, PaymentMethod
 from models.category import Category, CategoryType
@@ -222,11 +222,14 @@ class AccountingStatementsService:
                 else:
                     cash_balance -= amount
 
-        # Subtract paid credit installments
+        # Subtract paid credit installments (use paid_date if available, else billing month)
         as_of_month = as_of.strftime('%Y-%m')
         paid_installments = db.query(CardInstallment).filter(
-            CardInstallment.month <= as_of_month,
-            CardInstallment.paid == True
+            CardInstallment.paid == True,
+            or_(
+                CardInstallment.paid_date <= as_of,
+                and_(CardInstallment.paid_date == None, CardInstallment.month <= as_of_month)
+            )
         ).all()
 
         credit_payments = sum(Decimal(str(inst.amount)) for inst in paid_installments)

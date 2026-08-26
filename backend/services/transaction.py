@@ -145,7 +145,6 @@ class TransactionService:
         """Update an existing transaction"""
         transaction = TransactionService.get_by_id(db, transaction_id)
 
-        # If updating category, verify it exists
         if transaction_data.category_id:
             category = db.query(Category).filter(Category.id == transaction_data.category_id).first()
             if not category:
@@ -154,7 +153,6 @@ class TransactionService:
                     detail=f"Category with id {transaction_data.category_id} not found"
                 )
 
-        # If updating participant, verify it exists
         if transaction_data.participant_id:
             participant = db.query(Participant).filter(Participant.id == transaction_data.participant_id).first()
             if not participant:
@@ -165,54 +163,66 @@ class TransactionService:
 
         update_data = transaction_data.model_dump(exclude_unset=True)
 
-        reinstallment_fields = {'installment_count', 'amount', 'card_id', 'date'}
-        needs_reinstallment = (
-            transaction.payment_method == PaymentMethod.CREDIT
-            and bool(reinstallment_fields & update_data.keys())
-        )
+        old_payment_method = transaction.payment_method
+        new_payment_method = update_data.get('payment_method', old_payment_method)
 
-        paid_numbers: set[int] = set()
-        if needs_reinstallment:
-            paid_installments = db.query(CardInstallment).filter(
-                CardInstallment.transaction_id == transaction_id,
-                CardInstallment.paid == True
-            ).all()
-            paid_numbers = {inst.installment_number for inst in paid_installments}
-
-            db.query(CardInstallment).filter(
-                CardInstallment.transaction_id == transaction_id,
-                CardInstallment.paid == False
-            ).delete(synchronize_session=False)
-
+        # Apply field changes
         for field, value in update_data.items():
             setattr(transaction, field, value)
 
-        if needs_reinstallment and transaction.card_id:
-            total = transaction.installment_count or 1
-            amount_per = float(transaction.amount) / total
+        # Sync is_credit with payment_method
+        transaction.is_credit = (new_payment_method == PaymentMethod.CREDIT)
 
-            card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
-            closing_day = card.closing_day if card else 1
+        was_credit = old_payment_method == PaymentMethod.CREDIT
+        is_credit_now = new_payment_method == PaymentMethod.CREDIT
 
-            if transaction.date.day < closing_day:
-                first_installment = transaction.date + relativedelta(months=1)
-            else:
-                first_installment = transaction.date + relativedelta(months=2)
-            first_installment = first_installment.replace(day=1)
+        if was_credit and not is_credit_now:
+            # Changed away from credit: delete all installments
+            db.query(CardInstallment).filter(
+                CardInstallment.transaction_id == transaction_id
+            ).delete(synchronize_session=False)
+            transaction.card_id = None
+            transaction.installment_count = None
 
-            for i in range(total):
-                inst_num = i + 1
-                if inst_num in paid_numbers:
-                    continue
-                installment_month = first_installment + relativedelta(months=i)
-                db.add(CardInstallment(
-                    transaction_id=transaction.id,
-                    credit_card_id=transaction.card_id,
-                    installment_number=inst_num,
-                    month=installment_month.strftime("%Y-%m"),
-                    amount=amount_per,
-                    paid=False
-                ))
+        elif is_credit_now and transaction.card_id:
+            reinstallment_triggers = {'amount', 'card_id', 'installment_count', 'date', 'payment_method'}
+            if reinstallment_triggers & update_data.keys():
+                # Keep paid installments, delete and regenerate unpaid ones
+                paid_installments = db.query(CardInstallment).filter(
+                    CardInstallment.transaction_id == transaction_id,
+                    CardInstallment.paid == True
+                ).all()
+                paid_numbers = {inst.installment_number for inst in paid_installments}
+
+                db.query(CardInstallment).filter(
+                    CardInstallment.transaction_id == transaction_id,
+                    CardInstallment.paid == False
+                ).delete(synchronize_session=False)
+
+                total = transaction.installment_count or 1
+                amount_per = float(transaction.amount) / total
+
+                card = db.query(CreditCard).filter(CreditCard.id == transaction.card_id).first()
+                closing_day = card.closing_day if card else 1
+                if transaction.date.day < closing_day:
+                    first_installment = transaction.date + relativedelta(months=1)
+                else:
+                    first_installment = transaction.date + relativedelta(months=2)
+                first_installment = first_installment.replace(day=1)
+
+                for i in range(total):
+                    inst_num = i + 1
+                    if inst_num in paid_numbers:
+                        continue
+                    installment_month = first_installment + relativedelta(months=i)
+                    db.add(CardInstallment(
+                        transaction_id=transaction.id,
+                        credit_card_id=transaction.card_id,
+                        installment_number=inst_num,
+                        month=installment_month.strftime("%Y-%m"),
+                        amount=amount_per,
+                        paid=False
+                    ))
 
         db.commit()
         db.refresh(transaction)

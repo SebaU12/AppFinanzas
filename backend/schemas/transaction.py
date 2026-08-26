@@ -84,12 +84,17 @@ class TransactionUpdate(BaseModel):
     amount: Decimal | None = Field(None, gt=0)
     category_id: UUID | None = None
     participant_id: UUID | None = None
+    payment_method: PaymentMethod | None = None
+    card_id: UUID | None = None
+    debit_card_id: UUID | None = None
+    is_credit: bool | None = None
+    installment_count: int | None = Field(None, ge=1, le=36)
+    currency: Currency | None = None
     description: str | None = Field(None, max_length=500)
 
     @field_validator('amount')
     @classmethod
     def validate_amount(cls, v):
-        """Validate amount is positive"""
         if v is not None and v <= 0:
             raise ValueError('Amount must be positive')
         return v
