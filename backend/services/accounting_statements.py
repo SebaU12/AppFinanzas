@@ -8,7 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import extract, func, or_, and_
-from sqlalchemy.orm import Session, or_, and_
+from sqlalchemy.orm import Session
 
 from models.transaction import Transaction, PaymentMethod
 from models.category import Category, CategoryType
