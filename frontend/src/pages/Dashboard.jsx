@@ -60,23 +60,52 @@ export default function Dashboard() {
         months.map(m => transactionsApi.getByMonth(m).catch(() => []))
       );
 
-      const data = months.map((m, i) => {
+      if (trendPeriod === 'monthly') {
         const txs = selectedParticipant === 'all'
-          ? results[i]
-          : results[i].filter(t => t.participant?.name === selectedParticipant);
+          ? results[0]
+          : results[0].filter(t => t.participant?.name === selectedParticipant);
 
-        const mo = parseInt(m.split('-')[1], 10);
-        const income = txs
-          .filter(t => t.category?.type === 'income')
-          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const expenses = txs
-          .filter(t => t.category?.type === 'expense')
-          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const weeks = [
+          { label: 'Sem 1', min: 1, max: 7 },
+          { label: 'Sem 2', min: 8, max: 14 },
+          { label: 'Sem 3', min: 15, max: 21 },
+          { label: 'Sem 4', min: 22, max: 31 },
+        ];
 
-        return { month: MONTH_NAMES[mo - 1], income, expenses };
-      });
+        const data = weeks.map(({ label, min, max }) => {
+          const weekTxs = txs.filter(t => {
+            const day = new Date(t.date + 'T00:00:00').getDate();
+            return day >= min && day <= max;
+          });
+          const income = weekTxs
+            .filter(t => t.category?.type === 'income')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          const expenses = weekTxs
+            .filter(t => t.category?.type === 'expense')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          return { month: label, income, expenses };
+        });
 
-      setTrendData(data);
+        setTrendData(data);
+      } else {
+        const data = months.map((m, i) => {
+          const txs = selectedParticipant === 'all'
+            ? results[i]
+            : results[i].filter(t => t.participant?.name === selectedParticipant);
+
+          const mo = parseInt(m.split('-')[1], 10);
+          const income = txs
+            .filter(t => t.category?.type === 'income')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+          const expenses = txs
+            .filter(t => t.category?.type === 'expense')
+            .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+
+          return { month: MONTH_NAMES[mo - 1], income, expenses };
+        });
+
+        setTrendData(data);
+      }
     } catch (err) {
       console.error('Error fetching trend data:', err);
     }

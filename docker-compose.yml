@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: finanzas
       POSTGRES_USER: finanzas_user
       POSTGRES_PASSWORD: finanzas_pass_123
+      TZ: America/Lima
+      PGTZ: America/Lima
     ports:
       - "5432:5432"
     volumes:
@@ -24,6 +26,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://finanzas_user:finanzas_pass_123@db:5432/finanzas
       API_HOST: 0.0.0.0
       API_PORT: 8000
+      TZ: America/Lima
     ports:
       - "8000:8000"
     volumes:

@@ -312,6 +312,14 @@ export default function CreditCards() {
     setShowPaymentModal(true);
   };
 
+  const selectedInstallmentsTotal = installments
+    .filter(inst => selectedInstallments.has(inst.id))
+    .reduce((sum, inst) => sum + inst.monthlyAmount, 0);
+
+  const paymentPreviewTotal = pendingPayment?.type === 'single'
+    ? pendingPayment.installment?.monthlyAmount || 0
+    : selectedInstallmentsTotal;
+
   if (loading) {
     return (
       <div className="page">
@@ -542,8 +550,14 @@ export default function CreditCards() {
             return (
               <>
                 {someSelected && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--primary-light, #e8f0fe)', borderRadius: '0.5rem' }}>
-                    <span style={{ fontWeight: 600 }}>{selectedInstallments.size} cuota(s) seleccionada(s)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--primary-light, #e8f0fe)', borderRadius: '0.5rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>{selectedInstallments.size} cuota(s) seleccionada(s)</span>
+                      <span style={{ fontWeight: 700, color: 'var(--primary-dark, var(--primary))' }}>
+                        Total a pagar: {currencySymbol(selectedCard?.currency)} {selectedInstallmentsTotal.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button
                       className="btn btn-primary"
                       onClick={() => handleBulkMarkPaid(visibleInstallments)}
@@ -560,6 +574,7 @@ export default function CreditCards() {
                       <X size={16} />
                       Cancelar
                     </button>
+                    </div>
                   </div>
                 )}
                 <div style={{ overflowX: 'auto' }}>
@@ -933,6 +948,27 @@ export default function CreditCards() {
               No cuenta como gasto nuevo — el gasto ya fue registrado cuando hiciste la compra.
             </p>
 
+            <div
+              style={{
+                marginBottom: '1.5rem',
+                padding: '0.9rem 1rem',
+                borderRadius: '0.75rem',
+                background: 'var(--primary-light, #e8f0fe)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}
+            >
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                {pendingPayment?.type === 'single' ? 'Monto de la cuota' : 'Total a pagar'}
+              </span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-dark, var(--primary))' }}>
+                {currencySymbol(selectedCard?.currency)} {paymentPreviewTotal.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -986,4 +1022,3 @@ export default function CreditCards() {
     </div>
   );
 }
-

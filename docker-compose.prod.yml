@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-finanzas}
       POSTGRES_USER: ${POSTGRES_USER:-finanzas_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finanzas_pass_123}
+      TZ: America/Lima
+      PGTZ: America/Lima
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
@@ -21,6 +23,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-finanzas_user}:${POSTGRES_PASSWORD:-finanzas_pass_123}@db:5432/${POSTGRES_DB:-finanzas}
+      TZ: America/Lima
     depends_on:
       - db
     networks:
